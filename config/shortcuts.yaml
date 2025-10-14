@@ -1,0 +1,104 @@
+# Shortcut Sage - Shortcuts Configuration
+# This file defines all available keyboard shortcuts
+
+version: "1.0"
+
+shortcuts:
+  # Desktop Navigation
+  - key: "Meta+D"
+    action: "show_desktop"
+    description: "Show desktop"
+    category: "desktop"
+
+  - key: "Meta+Tab"
+    action: "overview"
+    description: "Show overview/task switcher"
+    category: "desktop"
+
+  - key: "Ctrl+F10"
+    action: "present_windows"
+    description: "Present windows (current desktop)"
+    category: "desktop"
+
+  - key: "Meta+PgUp"
+    action: "switch_desktop_prev"
+    description: "Switch to previous desktop"
+    category: "desktop"
+
+  - key: "Meta+PgDown"
+    action: "switch_desktop_next"
+    description: "Switch to next desktop"
+    category: "desktop"
+
+  # Window Management
+  - key: "Meta+Left"
+    action: "tile_left"
+    description: "Tile window to left half"
+    category: "window"
+
+  - key: "Meta+Right"
+    action: "tile_right"
+    description: "Tile window to right half"
+    category: "window"
+
+  - key: "Meta+Up"
+    action: "maximize"
+    description: "Maximize window"
+    category: "window"
+
+  - key: "Meta+Down"
+    action: "minimize"
+    description: "Minimize window"
+    category: "window"
+
+  - key: "Alt+F4"
+    action: "close_window"
+    description: "Close active window"
+    category: "window"
+
+  - key: "Alt+F3"
+    action: "window_menu"
+    description: "Show window operations menu"
+    category: "window"
+
+  - key: "Meta+Shift+Left"
+    action: "move_window_left_desktop"
+    description: "Move window to desktop on the left"
+    category: "window"
+
+  - key: "Meta+Shift+Right"
+    action: "move_window_right_desktop"
+    description: "Move window to desktop on the right"
+    category: "window"
+
+  # Application Launching
+  - key: "Meta"
+    action: "application_launcher"
+    description: "Open application launcher"
+    category: "launcher"
+
+  - key: "Meta+Space"
+    action: "krunner"
+    description: "Open KRunner"
+    category: "launcher"
+
+  - key: "Ctrl+Alt+T"
+    action: "terminal"
+    description: "Open terminal"
+    category: "launcher"
+
+  # Screenshots
+  - key: "Print"
+    action: "screenshot_full"
+    description: "Take full screenshot"
+    category: "screenshot"
+
+  - key: "Meta+Print"
+    action: "screenshot_window"
+    description: "Screenshot active window"
+    category: "screenshot"
+
+  - key: "Shift+Print"
+    action: "screenshot_region"
+    description: "Screenshot rectangular region"
+    category: "screenshot"
