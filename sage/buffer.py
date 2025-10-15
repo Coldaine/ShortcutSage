@@ -39,7 +39,7 @@ class RingBuffer:
 
         cutoff = self._events[-1].timestamp - self.window
 
-        while self._events and self._events[0].timestamp < cutoff:
+        while self._events and self._events[0].timestamp <= cutoff:
             self._events.popleft()
 
     def recent(self) -> list[Event]:

@@ -336,10 +336,10 @@ class TestPolicyEngine:
 
         assert engine.get_acceptance_count("overview") == 0
 
-        engine.mark_accepted("overview")
+        engine.mark_accepted("overview", "test_rule")
         assert engine.get_acceptance_count("overview") == 1
 
-        engine.mark_accepted("overview")
+        engine.mark_accepted("overview", "test_rule")
         assert engine.get_acceptance_count("overview") == 2
 
     def test_clear_cooldowns(self, shortcuts: dict[str, Shortcut]) -> None:
