@@ -1,0 +1,13 @@
+[Desktop Entry]
+Name=Shortcut Sage
+Comment=Context-aware keyboard shortcut suggestions for KDE Plasma
+Exec=shortcut-sage %k
+Icon=preferences-desktop-keyboard
+Type=Application
+Categories=Utility;
+StartupNotify=false
+NoDisplay=true
+X-KDE-autostart-phase=1
+X-KDE-StartupNotify=false
+X-KDE-SubstituteUID=false
+X-KDE-Username=

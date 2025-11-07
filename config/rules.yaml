@@ -1,0 +1,136 @@
+# Shortcut Sage - Rules Configuration
+# This file defines context-based suggestion rules
+
+version: "1.0"
+
+rules:
+  # After showing desktop, suggest overview or window tiling
+  - name: "after_show_desktop"
+    context:
+      type: "event_sequence"
+      pattern: ["show_desktop"]
+      window: 3
+    suggest:
+      - action: "overview"
+        priority: 80
+      - action: "tile_left"
+        priority: 60
+      - action: "tile_right"
+        priority: 60
+    cooldown: 300
+
+  # After opening overview, suggest desktop navigation
+  - name: "after_overview"
+    context:
+      type: "event_sequence"
+      pattern: ["overview"]
+      window: 3
+    suggest:
+      - action: "switch_desktop_next"
+        priority: 75
+      - action: "switch_desktop_prev"
+        priority: 75
+      - action: "present_windows"
+        priority: 50
+    cooldown: 300
+
+  # After tiling left, suggest tiling another window right
+  - name: "after_tile_left"
+    context:
+      type: "event_sequence"
+      pattern: ["tile_left"]
+      window: 5
+    suggest:
+      - action: "tile_right"
+        priority: 85
+      - action: "overview"
+        priority: 60
+    cooldown: 180
+
+  # After tiling right, suggest tiling another window left
+  - name: "after_tile_right"
+    context:
+      type: "event_sequence"
+      pattern: ["tile_right"]
+      window: 5
+    suggest:
+      - action: "tile_left"
+        priority: 85
+      - action: "overview"
+        priority: 60
+    cooldown: 180
+
+  # After maximizing, suggest window management
+  - name: "after_maximize"
+    context:
+      type: "event_sequence"
+      pattern: ["maximize"]
+      window: 3
+    suggest:
+      - action: "tile_left"
+        priority: 70
+      - action: "tile_right"
+        priority: 70
+      - action: "show_desktop"
+        priority: 50
+    cooldown: 300
+
+  # After switching desktops, suggest related actions
+  - name: "after_desktop_switch"
+    context:
+      type: "event_sequence"
+      pattern:
+        - "switch_desktop_next"
+        - "switch_desktop_prev"
+      window: 3
+    suggest:
+      - action: "overview"
+        priority: 70
+      - action: "present_windows"
+        priority: 60
+    cooldown: 240
+
+  # After moving window between desktops, suggest navigation
+  - name: "after_move_window_desktop"
+    context:
+      type: "event_sequence"
+      pattern:
+        - "move_window_left_desktop"
+        - "move_window_right_desktop"
+      window: 5
+    suggest:
+      - action: "switch_desktop_next"
+        priority: 80
+      - action: "switch_desktop_prev"
+        priority: 80
+      - action: "overview"
+        priority: 60
+    cooldown: 180
+
+  # After taking screenshot, suggest region or window capture
+  - name: "after_screenshot"
+    context:
+      type: "event_sequence"
+      pattern: ["screenshot_full"]
+      window: 5
+    suggest:
+      - action: "screenshot_region"
+        priority: 75
+      - action: "screenshot_window"
+        priority: 70
+    cooldown: 120
+
+  # Launcher followup suggestions
+  - name: "after_launcher"
+    context:
+      type: "event_sequence"
+      pattern:
+        - "application_launcher"
+        - "krunner"
+      window: 3
+    suggest:
+      - action: "overview"
+        priority: 65
+      - action: "switch_desktop_next"
+        priority: 50
+    cooldown: 300
