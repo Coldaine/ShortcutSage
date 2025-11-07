@@ -23,7 +23,7 @@ class SuggestionResult(NamedTuple):
 class PersonalizationData:
     """Stores personalization data for CTR calculation."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.suggestion_count: int = 0  # Times suggested
         self.acceptance_count: int = 0  # Times accepted
         self.last_suggested: datetime = datetime.min

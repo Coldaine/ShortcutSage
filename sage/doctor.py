@@ -197,7 +197,7 @@ rules:
     return True
 
 
-def main():
+def main() -> None:
     """Main doctor command."""
     print("Shortcut Sage - Doctor")
     print("=" * 50)

@@ -3,9 +3,13 @@
 import logging
 from collections.abc import Callable
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
+
+if TYPE_CHECKING:
+    import watchdog.observers
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +27,7 @@ class ConfigWatcher:
         """
         self.config_dir = Path(config_dir)
         self.callback = callback
-        self.observer: Observer | None = None
+        self.observer: Observer | None = None  # type: ignore[valid-type]
         self._handler = _ConfigHandler(self.config_dir, self.callback)
 
     def start(self) -> None:
@@ -83,11 +87,14 @@ class _ConfigHandler(FileSystemEventHandler):
         if event.is_directory:
             return
 
+        # Convert src_path to string if it's bytes
+        src_path_str = event.src_path if isinstance(event.src_path, str) else event.src_path.decode("utf-8")
+
         # Only watch YAML files
-        if not event.src_path.endswith((".yaml", ".yml")):
+        if not src_path_str.endswith((".yaml", ".yml")):
             return
 
-        filename = Path(event.src_path).name
+        filename = Path(src_path_str).name
         logger.debug(f"Config file modified: {filename}")
 
         try:

@@ -38,24 +38,24 @@ class TelemetryEvent:
 class MetricsCollector:
     """Collects and aggregates metrics for observability."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._lock = threading.Lock()
         self.counters: dict[str, int] = defaultdict(int)
         self.histograms: dict[str, list[float]] = defaultdict(list)
-        self.events: deque = deque(maxlen=10000)  # Circular buffer for recent events
+        self.events: deque[TelemetryEvent] = deque(maxlen=10000)  # Circular buffer for recent events
         self.start_time = datetime.now()
 
-    def increment_counter(self, name: str, value: int = 1):
+    def increment_counter(self, name: str, value: int = 1) -> None:
         """Increment a counter."""
         with self._lock:
             self.counters[name] += value
 
-    def record_timing(self, name: str, duration: float):
+    def record_timing(self, name: str, duration: float) -> None:
         """Record a timing measurement."""
         with self._lock:
             self.histograms[name].append(duration)
 
-    def record_event(self, event: TelemetryEvent):
+    def record_event(self, event: TelemetryEvent) -> None:
         """Record a telemetry event."""
         with self._lock:
             self.events.append(event)
@@ -93,7 +93,7 @@ class MetricsCollector:
                 "event_count": len(self.events),
             }
 
-    def reset_counters(self):
+    def reset_counters(self) -> None:
         """Reset all counters (useful for testing)."""
         with self._lock:
             self.counters.clear()
@@ -156,7 +156,7 @@ class RotatingTelemetryLogger:
         event_type: EventType,
         duration: float | None = None,
         properties: dict[str, Any] | None = None,
-    ):
+    ) -> None:
         """Log an event with timing and properties."""
         event = TelemetryEvent(
             event_type=event_type,
@@ -184,7 +184,7 @@ class RotatingTelemetryLogger:
         # Write as NDJSON (newline-delimited JSON)
         self.logger.info(json.dumps(log_entry))
 
-    def log_error(self, error_msg: str, context: dict[str, Any] | None = None):
+    def log_error(self, error_msg: str, context: dict[str, Any] | None = None) -> None:
         """Log an error event."""
         self.log_event(
             EventType.ERROR_OCCURRED,
@@ -195,7 +195,7 @@ class RotatingTelemetryLogger:
         """Export current metrics."""
         return self.metrics.export_metrics()
 
-    def close(self):
+    def close(self) -> None:
         """Close the logger."""
         self.logger.removeHandler(self.handler)
         self.handler.close()
@@ -219,14 +219,14 @@ def get_telemetry() -> RotatingTelemetryLogger | None:
 
 def log_event(
     event_type: EventType, duration: float | None = None, properties: dict[str, Any] | None = None
-):
+) -> None:
     """Log an event using the global telemetry logger."""
     telemetry = get_telemetry()
     if telemetry:
         telemetry.log_event(event_type, duration, properties)
 
 
-def log_error(error_msg: str, context: dict[str, Any] | None = None):
+def log_error(error_msg: str, context: dict[str, Any] | None = None) -> None:
     """Log an error using the global telemetry logger."""
     telemetry = get_telemetry()
     if telemetry:

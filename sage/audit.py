@@ -58,8 +58,8 @@ class TelemetryBatchProcessor:
         total_events = len(events)
 
         # Count event types
-        event_counts = defaultdict(int)
-        durations = defaultdict(list)
+        event_counts: defaultdict[str, int] = defaultdict(int)
+        durations: defaultdict[str, list[float]] = defaultdict(list)
 
         for event in events:
             event_type = event.get("event_type", "unknown")
@@ -114,7 +114,7 @@ class TelemetryBatchProcessor:
             timestamp=datetime.now(), summary=summary, suggestions=suggestions, issues=issues
         )
 
-    def _get_time_range(self, events: list[dict[str, Any]]) -> dict[str, str]:
+    def _get_time_range(self, events: list[dict[str, Any]]) -> dict[str, Any]:
         """Get the time range of the events."""
         timestamps = []
         for event in events:
@@ -189,7 +189,7 @@ class TelemetryBatchProcessor:
         return "\n".join(output_lines)
 
 
-def main():
+def main() -> None:
     """Main entry point for the dev audit batch processor."""
     import sys
 

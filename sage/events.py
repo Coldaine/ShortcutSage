@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 EventType = Literal["window_focus", "desktop_switch", "overview_toggle", "window_move", "test"]
 
@@ -29,7 +29,7 @@ class Event:
         return (now - self.timestamp).total_seconds()
 
     @classmethod
-    def from_dict(cls, data: dict) -> "Event":
+    def from_dict(cls, data: dict[str, Any]) -> "Event":
         """
         Create Event from dictionary (e.g., from JSON).
 

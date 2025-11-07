@@ -1,8 +1,9 @@
 """Developer hints and debugging panel for Shortcut Sage."""
 
 import sys
+from typing import Union
 
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import QCoreApplication, Qt, QTimer
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QApplication,
@@ -22,14 +23,14 @@ from sage.telemetry import get_telemetry
 class DevHintsPanel(QWidget):
     """Developer debugging panel showing internal state and hints."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
         self.telemetry = get_telemetry()
         self.setup_ui()
         self.setup_refresh_timer()
 
-    def setup_ui(self):
+    def setup_ui(self) -> None:
         """Set up the UI for the dev hints panel."""
         self.setWindowTitle("Shortcut Sage - Dev Hints Panel")
         self.setGeometry(100, 100, 800, 600)
@@ -43,7 +44,7 @@ class DevHintsPanel(QWidget):
         title_font.setBold(True)
         title_font.setPointSize(14)
         title_label.setFont(title_font)
-        title_label.setAlignment(Qt.AlignCenter)
+        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         main_layout.addWidget(title_label)
 
         # Stats section
@@ -55,8 +56,8 @@ class DevHintsPanel(QWidget):
 
         # Divider
         divider = QFrame()
-        divider.setFrameShape(QFrame.HLine)
-        divider.setFrameShadow(QFrame.Sunken)
+        divider.setFrameShape(QFrame.Shape.HLine)
+        divider.setFrameShadow(QFrame.Shadow.Sunken)
         main_layout.addWidget(divider)
 
         # Suggestions trace
@@ -95,18 +96,18 @@ class DevHintsPanel(QWidget):
 
         main_layout.addLayout(controls_layout)
 
-    def setup_refresh_timer(self):
+    def setup_refresh_timer(self) -> None:
         """Set up automatic refresh timer."""
         self.refresh_timer = QTimer(self)
         self.refresh_timer.timeout.connect(self.refresh_data)
         self.refresh_timer.start(2000)  # Refresh every 2 seconds
 
-    def refresh_data(self):
+    def refresh_data(self) -> None:
         """Refresh all displayed data."""
         self.update_stats()
         self.update_traces()
 
-    def update_stats(self):
+    def update_stats(self) -> None:
         """Update the statistics display."""
         if self.telemetry:
             metrics = self.telemetry.export_metrics()
@@ -120,17 +121,17 @@ Errors: {metrics["counters"].get("error_occurred", 0)}
 
 Performance:
 Event Processing Time: {metrics["histograms"].get("event_received", {}).get("avg", 0):.3f}s avg
-Last 10 Events: {len(self.telemetry.events)}"""
+Last 10 Events: {len(self.telemetry.metrics.events)}"""
 
             self.stats_text.setPlainText(stats_text)
         else:
             self.stats_text.setPlainText("Telemetry not initialized - start the daemon first")
 
-    def update_traces(self):
+    def update_traces(self) -> None:
         """Update the trace displays."""
         if self.telemetry:
             # Get recent events
-            recent_events = list(self.telemetry.events)[-20:]  # Last 20 events
+            recent_events = list(self.telemetry.metrics.events)[-20:]  # Last 20 events
 
             # Format events
             event_lines = []
@@ -164,15 +165,15 @@ Last 10 Events: {len(self.telemetry.events)}"""
             self.events_trace.setPlainText("No telemetry data available")
             self.suggestions_trace.setPlainText("No suggestion data available")
 
-    def clear_traces(self):
+    def clear_traces(self) -> None:
         """Clear all trace information."""
         if self.telemetry:
-            self.telemetry.events.clear()
+            self.telemetry.metrics.events.clear()
         self.events_trace.clear()
         self.suggestions_trace.clear()
 
 
-def show_dev_hints():
+def show_dev_hints() -> tuple[Union[QCoreApplication, QApplication], DevHintsPanel]:
     """Show the developer hints panel."""
     app = QApplication.instance()
     if app is None:
@@ -184,7 +185,7 @@ def show_dev_hints():
     return app, panel
 
 
-def main():
+def main() -> None:
     """Main entry point for dev hints panel."""
     app = QApplication(sys.argv)
 

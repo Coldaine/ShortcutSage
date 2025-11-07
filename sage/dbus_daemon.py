@@ -6,6 +6,8 @@ import signal
 import sys
 import time
 from collections.abc import Callable
+from pathlib import Path
+from typing import Any
 
 from sage.buffer import RingBuffer
 from sage.config import ConfigLoader
@@ -21,7 +23,7 @@ try:
     import dbus
     import dbus.service
     from dbus.mainloop.glib import DBusGMainLoop
-    from gi.repository import GLib
+    from gi.repository import GLib  # type: ignore[import-not-found]
 
     DBUS_AVAILABLE = True
     logger.info("DBus support available")
@@ -33,14 +35,12 @@ except ImportError:
 class Daemon:
     """DBus service for Shortcut Sage daemon (with fallback implementation)."""
 
-    def __init__(self, config_dir: str, enable_dbus=True, log_events=True, log_dir=None):
+    def __init__(self, config_dir: str, enable_dbus: bool = True, log_events: bool = True, log_dir: str | Path | None = None) -> None:
         """Initialize the daemon."""
         self.enable_dbus = enable_dbus and DBUS_AVAILABLE
         self.log_events = log_events  # Whether to log events and suggestions
 
         # Initialize telemetry
-        from pathlib import Path
-
         if log_dir is None:
             # Default log directory
             log_dir = Path.home() / ".local" / "share" / "shortcut-sage" / "logs"
@@ -76,7 +76,7 @@ class Daemon:
 
         logger.info(f"Daemon initialized (DBus: {self.enable_dbus}, logging: {self.log_events})")
 
-    def _init_dbus_service(self):
+    def _init_dbus_service(self) -> None:
         """Initialize the DBus service if available."""
         if not self.enable_dbus:
             return
@@ -92,19 +92,19 @@ class Daemon:
         bus_name = dbus.service.BusName(self.BUS_NAME, bus=dbus.SessionBus())
         dbus.service.Object.__init__(self, bus_name, self.OBJECT_PATH)
 
-    def _setup_config_reload(self):
+    def _setup_config_reload(self) -> None:
         """Set up configuration reload callback."""
         from sage.watcher import ConfigWatcher
 
-        def reload_config(filename: str):
+        def reload_config(filename: str) -> None:
             """Reload config when file changes."""
             try:
                 if filename == "shortcuts.yaml":
-                    config = self.config_loader.load_shortcuts()
-                    self.policy_engine.shortcuts = {s.action: s for s in config.shortcuts}
+                    shortcuts_config = self.config_loader.load_shortcuts()
+                    self.policy_engine.shortcuts = {s.action: s for s in shortcuts_config.shortcuts}
                 elif filename == "rules.yaml":
-                    config = self.config_loader.load_rules()
-                    self.rule_matcher = RuleMatcher(config.rules)
+                    rules_config = self.config_loader.load_rules()
+                    self.rule_matcher = RuleMatcher(rules_config.rules)
                 logger.info(f"Reloaded config: {filename}")
             except Exception as e:
                 logger.error(f"Failed to reload config {filename}: {e}")
@@ -231,11 +231,11 @@ class Daemon:
 
         return suggestions_json
 
-    def set_suggestions_callback(self, callback: Callable[[list[SuggestionResult]], None]):
+    def set_suggestions_callback(self, callback: Callable[[list[SuggestionResult]], None]) -> None:
         """Set callback for suggestions (used when DBus is not available)."""
         self.suggestions_callback = callback
 
-    def start(self):
+    def start(self) -> None:
         """Start the daemon."""
         self.watcher.start()
         if self.enable_dbus:
@@ -243,13 +243,13 @@ class Daemon:
         else:
             logger.info("Daemon started (fallback mode)")
 
-    def stop(self):
+    def stop(self) -> None:
         """Stop the daemon."""
         self.watcher.stop()
         logger.info("Daemon stopped")
 
 
-def main():
+def main() -> None:
     """Main entry point."""
     logging.basicConfig(
         level=logging.INFO,
@@ -267,7 +267,7 @@ def main():
     daemon = Daemon(config_dir, enable_dbus=DBUS_AVAILABLE, log_dir=log_dir)
 
     # Set up signal handlers for graceful shutdown
-    def signal_handler(signum, frame):
+    def signal_handler(signum: int, frame: Any) -> None:
         print(f"Received signal {signum}, shutting down...")
         # Log daemon stop
         from sage.telemetry import EventType, log_event
@@ -285,13 +285,13 @@ def main():
     # If DBus is available, run the main loop with DBus methods
     if daemon.enable_dbus:
         # Define the DBus service methods dynamically
-        class DBusService(dbus.service.Object):
-            def __init__(self, daemon_instance):
+        class DBusService(dbus.service.Object):  # type: ignore[misc]
+            def __init__(self, daemon_instance: Daemon) -> None:
                 self._daemon = daemon_instance
                 bus_name = dbus.service.BusName(self._daemon.BUS_NAME, bus=dbus.SessionBus())
                 dbus.service.Object.__init__(self, bus_name, self._daemon.OBJECT_PATH)
 
-            @dbus.service.method(
+            @dbus.service.method(  # type: ignore[misc]
                 "org.shortcutsage.Daemon",
                 in_signature="s",
                 out_signature="",
@@ -300,7 +300,7 @@ def main():
                 """DBus method to send an event."""
                 self._daemon.send_event(event_json)
 
-            @dbus.service.method(
+            @dbus.service.method(  # type: ignore[misc]
                 "org.shortcutsage.Daemon",
                 in_signature="",
                 out_signature="s",
@@ -309,13 +309,13 @@ def main():
                 """DBus method to ping."""
                 return self._daemon.ping()
 
-            @dbus.service.signal(
+            @dbus.service.signal(  # type: ignore[misc]
                 "org.shortcutsage.Daemon",
                 signature="s",
             )
             def Suggestions(self, suggestions_json: str) -> None:  # noqa: N802 - DBus API requires capitalized method names
                 """DBus signal for suggestions."""
-                return suggestions_json
+                pass
 
         # Create the DBus service with daemon instance
         # Keep reference to prevent garbage collection

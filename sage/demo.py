@@ -5,7 +5,9 @@ import logging
 import tempfile
 import time
 from datetime import datetime
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 from PySide6.QtWidgets import QApplication
 
@@ -13,7 +15,7 @@ from sage.dbus_daemon import Daemon
 from sage.overlay import OverlayWindow
 
 
-def create_demo_config():
+def create_demo_config() -> Path:
     """Create demo configuration files."""
     # Create temporary directory for demo configs
     config_dir = Path(tempfile.mkdtemp(prefix="shortcut_sage_demo_"))
@@ -74,7 +76,7 @@ rules:
     return config_dir
 
 
-def run_demo():
+def run_demo() -> None:
     """Run the end-to-end demo."""
     print("Shortcut Sage - End-to-End Demo")
     print("=" * 40)
@@ -128,8 +130,8 @@ def run_demo():
         event_json = json.dumps(event)
 
         # Define callback to update overlay with suggestions
-        def create_callback():
-            def callback(suggestions):
+        def create_callback() -> Callable[[list[Any]], None]:
+            def callback(suggestions: list[Any]) -> None:
                 # Update overlay with suggestions
                 overlay.set_suggestions_fallback(
                     [

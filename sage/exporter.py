@@ -24,7 +24,7 @@ class DiscoveredShortcut:
 class ShortcutExporter:
     """Tool to enumerate and export KDE shortcuts."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.discovered_shortcuts: list[DiscoveredShortcut] = []
 
     def discover_from_kglobalaccel(self) -> list[DiscoveredShortcut]:
@@ -195,7 +195,7 @@ class ShortcutExporter:
             return False
 
 
-def main():
+def main() -> None:
     """Main entry point for the export-shortcuts tool."""
     if len(sys.argv) != 2:
         print("Usage: export-shortcuts <output_file.yaml>")

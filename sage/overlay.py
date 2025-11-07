@@ -3,6 +3,7 @@
 import json
 import logging
 import sys
+from typing import Any
 
 from PySide6.QtCore import QEasingCurve, QPropertyAnimation, Qt
 from PySide6.QtGui import QFont
@@ -34,7 +35,7 @@ class SuggestionChip(QWidget):
 
         self.setup_ui()
 
-    def setup_ui(self):
+    def setup_ui(self) -> None:
         """Set up the UI for the chip."""
         layout = QHBoxLayout(self)
         layout.setContentsMargins(8, 4, 8, 4)
@@ -75,7 +76,7 @@ class SuggestionChip(QWidget):
 class OverlayWindow(QWidget):
     """Main overlay window that displays shortcut suggestions."""
 
-    def __init__(self, dbus_available=True):
+    def __init__(self, dbus_available: bool = True) -> None:
         super().__init__()
 
         self.dbus_available = dbus_available and DBUS_AVAILABLE
@@ -87,7 +88,7 @@ class OverlayWindow(QWidget):
 
         logger.info(f"Overlay initialized (DBus: {self.dbus_available})")
 
-    def setup_window(self):
+    def setup_window(self) -> None:
         """Configure window properties for overlay."""
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint
@@ -101,11 +102,12 @@ class OverlayWindow(QWidget):
         # Position at top-left corner
         self.setGeometry(20, 20, 300, 120)
 
-    def setup_ui(self):
+    def setup_ui(self) -> None:
         """Set up the UI elements."""
-        self.layout = QHBoxLayout(self)
-        self.layout.setContentsMargins(10, 10, 10, 10)
-        self.layout.setSpacing(8)
+        main_layout = QHBoxLayout(self)
+        main_layout.setContentsMargins(10, 10, 10, 10)
+        main_layout.setSpacing(8)
+        self.setLayout(main_layout)
 
         # Initially empty - suggestions will be added dynamically
         self.chips: list[SuggestionChip] = []
@@ -113,7 +115,7 @@ class OverlayWindow(QWidget):
         # Styling
         self.setStyleSheet("background-color: transparent;")
 
-    def connect_dbus(self):
+    def connect_dbus(self) -> None:
         """Connect to DBus if available."""
         if not self.dbus_available:
             logger.info("Running overlay in fallback mode (no DBus)")
@@ -141,7 +143,7 @@ class OverlayWindow(QWidget):
             logger.error(f"Failed to connect to DBus: {e}")
             self.dbus_available = False
 
-    def on_suggestions(self, suggestions_json: str):
+    def on_suggestions(self, suggestions_json: str) -> None:
         """Handle incoming suggestions from DBus."""
         try:
             suggestions = json.loads(suggestions_json)
@@ -149,7 +151,7 @@ class OverlayWindow(QWidget):
         except Exception as e:
             logger.error(f"Error processing suggestions: {e}")
 
-    def update_suggestions(self, suggestions: list[dict]):
+    def update_suggestions(self, suggestions: list[dict[str, Any]]) -> None:
         """Update the UI with new suggestions."""
         # Clear existing chips
         for chip in self.chips:
@@ -165,17 +167,19 @@ class OverlayWindow(QWidget):
                 description=suggestion["description"],
                 priority=suggestion["priority"],
             )
-            self.layout.addWidget(chip)
+            layout = self.layout()
+            if layout:
+                layout.addWidget(chip)
             self.chips.append(chip)
 
         # Adjust size to fit content
         self.adjustSize()
 
-    def set_suggestions_fallback(self, suggestions: list[dict]):
+    def set_suggestions_fallback(self, suggestions: list[dict[str, Any]]) -> None:
         """Update suggestions when not using DBus (for testing)."""
         self.update_suggestions(suggestions)
 
-    def fade_in(self):
+    def fade_in(self) -> None:
         """Apply fade-in animation."""
         self.setWindowOpacity(0.0)  # Start transparent
 
@@ -186,7 +190,7 @@ class OverlayWindow(QWidget):
         self.fade_animation.setEasingCurve(QEasingCurve.Type.InOutCubic)
         self.fade_animation.start()
 
-    def fade_out(self):
+    def fade_out(self) -> None:
         """Apply fade-out animation."""
         self.fade_animation = QPropertyAnimation(self, b"windowOpacity")
         self.fade_animation.setDuration(300)
@@ -197,7 +201,7 @@ class OverlayWindow(QWidget):
         self.fade_animation.start()
 
 
-def main():
+def main() -> None:
     """Main entry point for the overlay."""
     app = QApplication(sys.argv)
 
