@@ -1,10 +1,11 @@
 """Test configuration loader."""
 
-import pytest
 from pathlib import Path
 
-from sage.config import ConfigLoader, ConfigError
-from sage.models import ShortcutsConfig, RulesConfig
+import pytest
+
+from sage.config import ConfigError, ConfigLoader
+from sage.models import RulesConfig, ShortcutsConfig
 
 
 class TestConfigLoader:

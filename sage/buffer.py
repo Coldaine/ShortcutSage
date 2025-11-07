@@ -1,7 +1,7 @@
 """Ring buffer for time-windowed events."""
 
 from collections import deque
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from sage.events import Event
 

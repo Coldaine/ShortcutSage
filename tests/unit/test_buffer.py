@@ -1,7 +1,8 @@
 """Test ring buffer."""
 
-import pytest
 from datetime import datetime, timedelta
+
+import pytest
 
 from sage.buffer import RingBuffer
 from sage.events import Event

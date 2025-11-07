@@ -1,19 +1,20 @@
 """Comprehensive tests for engine components."""
 
-import pytest
 from datetime import datetime, timedelta
 
-from sage.events import Event
+import pytest
+
 from sage.buffer import RingBuffer
+from sage.events import Event
 from sage.features import FeatureExtractor
 from sage.matcher import RuleMatcher
-from sage.policy import PolicyEngine, SuggestionResult
 from sage.models import (
-    Rule,
-    Suggestion,
     ContextMatch,
+    Rule,
     Shortcut,
+    Suggestion,
 )
+from sage.policy import PolicyEngine
 
 
 class TestEvent:

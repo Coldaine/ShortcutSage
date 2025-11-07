@@ -4,16 +4,15 @@ import json
 import logging
 import signal
 import sys
-from datetime import datetime
-from typing import Any, Dict, Optional, Callable, List
 import time
+from collections.abc import Callable
 
-from sage.config import ConfigLoader
 from sage.buffer import RingBuffer
+from sage.config import ConfigLoader
 from sage.features import FeatureExtractor
 from sage.matcher import RuleMatcher
 from sage.policy import PolicyEngine, SuggestionResult
-from sage.telemetry import init_telemetry, log_event, EventType
+from sage.telemetry import EventType, init_telemetry, log_event
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +22,7 @@ try:
     import dbus.service
     from dbus.mainloop.glib import DBusGMainLoop
     from gi.repository import GLib
-    
+
     DBUS_AVAILABLE = True
     logger.info("DBus support available")
 except ImportError:
@@ -38,18 +37,17 @@ class Daemon:
         """Initialize the daemon."""
         self.enable_dbus = enable_dbus and DBUS_AVAILABLE
         self.log_events = log_events  # Whether to log events and suggestions
-        
+
         # Initialize telemetry
-        import os
         from pathlib import Path
         if log_dir is None:
             # Default log directory
             log_dir = Path.home() / ".local" / "share" / "shortcut-sage" / "logs"
         self.log_dir = Path(log_dir)
         self.log_dir.mkdir(parents=True, exist_ok=True)
-        
+
         self.telemetry = init_telemetry(self.log_dir)
-        
+
         # Log daemon start
         log_event(EventType.DAEMON_START, properties={
             "dbus_enabled": self.enable_dbus,
@@ -72,7 +70,7 @@ class Daemon:
         self._setup_config_reload()
 
         # Store callback for suggestions (to be set by caller if not using DBus)
-        self.suggestions_callback: Optional[Callable[[List[SuggestionResult]], None]] = None
+        self.suggestions_callback: Callable[[list[SuggestionResult]], None] | None = None
 
         if self.enable_dbus:
             self._init_dbus_service()
@@ -83,7 +81,7 @@ class Daemon:
         """Initialize the DBus service if available."""
         if not self.enable_dbus:
             return
-            
+
         # Initialize the D-Bus main loop
         DBusGMainLoop(set_as_default=True)
 
@@ -117,13 +115,14 @@ class Daemon:
     def send_event(self, event_json: str) -> None:
         """Receive and process an event from KWin or other sources."""
         start_time = time.time()
-        
+
         try:
             # Parse the event JSON
             event_data = json.loads(event_json)
 
             # Create an event object
             from datetime import datetime
+
             from sage.events import Event
 
             timestamp_str = event_data["timestamp"]
@@ -133,7 +132,7 @@ class Daemon:
                 )
             else:
                 timestamp = timestamp_str
-                
+
             event = Event(
                 timestamp=timestamp,
                 type=event_data["type"],
@@ -152,7 +151,7 @@ class Daemon:
             # Calculate processing metrics
             processing_time = time.time() - start_time
             latency = (datetime.now() - timestamp).total_seconds()
-            
+
             # Log the event processing if enabled
             if self.log_events:
                 logger.info(
@@ -160,7 +159,7 @@ class Daemon:
                     f"(processing_time: {processing_time:.3f}s, "
                     f"latency: {latency:.3f}s)"
                 )
-                
+
                 # Log detailed suggestions if any
                 for i, suggestion in enumerate(suggestions):
                     logger.debug(f"Suggestion {i+1}: {suggestion.action} ({suggestion.key}) - priority {suggestion.priority}")
@@ -173,7 +172,7 @@ class Daemon:
                 "processing_time": processing_time,
                 "latency": latency
             })
-            
+
             # Log each suggestion shown
             for suggestion in suggestions:
                 log_event(EventType.SUGGESTION_SHOWN, properties={
@@ -192,7 +191,7 @@ class Daemon:
             if self.log_events:
                 processing_time = time.time() - start_time
                 logger.error(f"Event processing failed after {processing_time:.3f}s: {e}")
-            
+
             # Log error to telemetry
             log_event(EventType.ERROR_OCCURRED, duration=time.time() - start_time, properties={
                 "error": str(e),
@@ -203,9 +202,9 @@ class Daemon:
         """Simple ping method to check if daemon is alive."""
         return "pong"
 
-    def emit_suggestions(self, suggestions: List[SuggestionResult]) -> str:
+    def emit_suggestions(self, suggestions: list[SuggestionResult]) -> str:
         """Emit suggestions (as signal if DBus available, or via callback)."""
-        # Convert suggestions to JSON 
+        # Convert suggestions to JSON
         suggestions_json = json.dumps([
             {
                 "action": s.action,
@@ -216,14 +215,14 @@ class Daemon:
             for s in suggestions
         ])
         logger.debug(f"Emitted suggestions: {suggestions_json}")
-        
+
         # If not using DBus, call the callback if available
         if not self.enable_dbus and self.suggestions_callback:
             self.suggestions_callback(suggestions)
-        
+
         return suggestions_json
 
-    def set_suggestions_callback(self, callback: Callable[[List[SuggestionResult]], None]):
+    def set_suggestions_callback(self, callback: Callable[[list[SuggestionResult]], None]):
         """Set callback for suggestions (used when DBus is not available)."""
         self.suggestions_callback = callback
 
@@ -262,7 +261,7 @@ def main():
     def signal_handler(signum, frame):
         print(f"Received signal {signum}, shutting down...")
         # Log daemon stop
-        from sage.telemetry import log_event, EventType
+        from sage.telemetry import EventType, log_event
         log_event(EventType.DAEMON_STOP, properties={"signal": signum})
         daemon.stop()
         sys.exit(0)
@@ -287,7 +286,7 @@ def main():
                 in_signature="s",
                 out_signature="",
             )
-            def SendEvent(self, event_json: str) -> None:
+            def SendEvent(self, event_json: str) -> None:  # noqa: N802 - DBus API requires capitalized method names
                 """DBus method to send an event."""
                 self._daemon.send_event(event_json)
 
@@ -296,7 +295,7 @@ def main():
                 in_signature="",
                 out_signature="s",
             )
-            def Ping(self) -> str:
+            def Ping(self) -> str:  # noqa: N802 - DBus API requires capitalized method names
                 """DBus method to ping."""
                 return self._daemon.ping()
 
@@ -304,12 +303,13 @@ def main():
                 "org.shortcutsage.Daemon",
                 signature="s",
             )
-            def Suggestions(self, suggestions_json: str) -> None:
+            def Suggestions(self, suggestions_json: str) -> None:  # noqa: N802 - DBus API requires capitalized method names
                 """DBus signal for suggestions."""
                 return suggestions_json
 
         # Create the DBus service with daemon instance
-        dbus_service = DBusService(daemon)
+        # Keep reference to prevent garbage collection
+        dbus_service = DBusService(daemon)  # noqa: F841 - Must keep in scope for DBus service to remain active
 
         try:
             loop = GLib.MainLoop()
@@ -317,7 +317,7 @@ def main():
         except KeyboardInterrupt:
             print("Interrupted, shutting down...")
             # Log daemon stop
-            from sage.telemetry import log_event, EventType
+            from sage.telemetry import EventType, log_event
             log_event(EventType.DAEMON_STOP, properties={"signal": "SIGINT"})
             daemon.stop()
     else:

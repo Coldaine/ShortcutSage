@@ -1,10 +1,11 @@
 """Configuration file watcher for hot-reload."""
 
 import logging
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
+
+from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler, FileSystemEvent, FileModifiedEvent
 
 logger = logging.getLogger(__name__)
 

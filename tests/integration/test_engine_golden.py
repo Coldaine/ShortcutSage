@@ -2,12 +2,12 @@
 
 from datetime import datetime, timedelta
 
-from sage.events import Event
 from sage.buffer import RingBuffer
+from sage.events import Event
 from sage.features import FeatureExtractor
 from sage.matcher import RuleMatcher
+from sage.models import ContextMatch, Rule, Shortcut, Suggestion
 from sage.policy import PolicyEngine
-from sage.models import Shortcut, Rule, Suggestion, ContextMatch
 
 
 class TestEngineGoldenScenarios:
@@ -206,10 +206,6 @@ class TestEngineGoldenScenarios:
 
     def test_window_pruning_affects_matches(self) -> None:
         """Golden: Old events pruned from window don't match rules."""
-        shortcuts = {
-            "overview": Shortcut(key="Meta+Tab", action="overview", description="Overview"),
-        }
-
         rules = [
             Rule(
                 name="recent_only",
@@ -222,7 +218,6 @@ class TestEngineGoldenScenarios:
         buffer = RingBuffer(window_seconds=2.0)
         extractor = FeatureExtractor(buffer)
         matcher = RuleMatcher(rules)
-        policy = PolicyEngine(shortcuts)
 
         now = datetime.now()
 

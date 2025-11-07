@@ -14,7 +14,7 @@ class TestDaemon:
         # Create config files for testing
         shortcuts_file = tmp_path / "shortcuts.yaml"
         rules_file = tmp_path / "rules.yaml"
-        
+
         shortcuts_content = """
 version: "1.0"
 shortcuts:
@@ -36,13 +36,13 @@ rules:
         priority: 80
     cooldown: 300
 """
-        
+
         shortcuts_file.write_text(shortcuts_content)
         rules_file.write_text(rules_content)
 
         # Initialize daemon in fallback mode
         daemon = Daemon(str(tmp_path), enable_dbus=False)
-        
+
         assert daemon is not None
         assert len(daemon.policy_engine.shortcuts) > 0
         assert daemon.enable_dbus is False
@@ -52,7 +52,7 @@ rules:
         # Create config files for testing
         shortcuts_file = tmp_path / "shortcuts.yaml"
         rules_file = tmp_path / "rules.yaml"
-        
+
         shortcuts_content = """
 version: "1.0"
 shortcuts:
@@ -74,13 +74,13 @@ rules:
         priority: 80
     cooldown: 300
 """
-        
+
         shortcuts_file.write_text(shortcuts_content)
         rules_file.write_text(rules_content)
 
         # Initialize daemon in fallback mode
         daemon = Daemon(str(tmp_path), enable_dbus=False)
-        
+
         result = daemon.ping()
         assert result == "pong"
 
@@ -89,7 +89,7 @@ rules:
         # Create config files for testing
         shortcuts_file = tmp_path / "shortcuts.yaml"
         rules_file = tmp_path / "rules.yaml"
-        
+
         shortcuts_content = """
 version: "1.0"
 shortcuts:
@@ -115,13 +115,13 @@ rules:
         priority: 80
     cooldown: 300
 """
-        
+
         shortcuts_file.write_text(shortcuts_content)
         rules_file.write_text(rules_content)
 
         # Initialize daemon in fallback mode
         daemon = Daemon(str(tmp_path), enable_dbus=False)
-        
+
         # Create a test event
         event_data = {
             "timestamp": datetime.now().isoformat(),
@@ -129,19 +129,19 @@ rules:
             "action": "show_desktop",
             "metadata": {}
         }
-        
+
         event_json = json.dumps(event_data)
-        
+
         # Capture suggestions
         suggestions_captured = []
         def suggestions_callback(suggestions):
             suggestions_captured.extend(suggestions)
-        
+
         daemon.set_suggestions_callback(suggestions_callback)
-        
+
         # Send the event
         daemon.send_event(event_json)
-        
-        # Check that suggestions were generated 
+
+        # Check that suggestions were generated
         assert len(suggestions_captured) > 0
         assert suggestions_captured[0].action == "overview"

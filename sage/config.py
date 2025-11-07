@@ -1,11 +1,12 @@
 """Configuration loading and validation."""
 
-import yaml
 from pathlib import Path
-from typing import TypeVar, Type
+from typing import TypeVar
+
+import yaml
 from pydantic import BaseModel, ValidationError
 
-from sage.models import ShortcutsConfig, RulesConfig
+from sage.models import RulesConfig, ShortcutsConfig
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -32,7 +33,7 @@ class ConfigLoader:
         if not self.config_dir.is_dir():
             raise ConfigError(f"Config path is not a directory: {self.config_dir}")
 
-    def load(self, filename: str, model: Type[T]) -> T:
+    def load(self, filename: str, model: type[T]) -> T:
         """
         Load and validate a config file.
 
@@ -52,7 +53,7 @@ class ConfigLoader:
             raise ConfigError(f"Config file not found: {path}")
 
         try:
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 data = yaml.safe_load(f)
         except yaml.YAMLError as e:
             raise ConfigError(f"Invalid YAML in {filename}: {e}") from e

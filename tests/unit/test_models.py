@@ -4,12 +4,12 @@ import pytest
 from pydantic import ValidationError
 
 from sage.models import (
-    Shortcut,
-    ShortcutsConfig,
     ContextMatch,
-    Suggestion,
     Rule,
     RulesConfig,
+    Shortcut,
+    ShortcutsConfig,
+    Suggestion,
 )
 
 

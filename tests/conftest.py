@@ -1,8 +1,8 @@
 """Shared pytest fixtures."""
 
-import pytest
 from pathlib import Path
-from typing import Generator
+
+import pytest
 
 
 @pytest.fixture

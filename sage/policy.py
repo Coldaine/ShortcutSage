@@ -1,11 +1,11 @@
 """Policy engine for suggestion filtering and ranking."""
 
 import logging
-from datetime import datetime, timedelta
-from typing import NamedTuple, Dict
 from collections import defaultdict
+from datetime import datetime
+from typing import NamedTuple
 
-from sage.models import Rule, Suggestion, Shortcut
+from sage.models import Rule, Shortcut, Suggestion
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ class SuggestionResult(NamedTuple):
 
 class PersonalizationData:
     """Stores personalization data for CTR calculation."""
-    
+
     def __init__(self):
         self.suggestion_count: int = 0  # Times suggested
         self.acceptance_count: int = 0  # Times accepted
@@ -43,13 +43,13 @@ class PolicyEngine:
         """
         self.shortcuts = shortcuts
         self.enable_personalization = enable_personalization
-        
+
         # Cooldown tracking
         self._cooldowns: dict[str, datetime] = {}
-        
+
         # Personalization data
-        self._personalization: Dict[str, PersonalizationData] = defaultdict(PersonalizationData)
-        
+        self._personalization: dict[str, PersonalizationData] = defaultdict(PersonalizationData)
+
         # Track acceptance for backward compatibility
         self._accepted: dict[str, int] = {}  # Track acceptance count
 
@@ -85,7 +85,7 @@ class PolicyEngine:
                     personalization = self._personalization[key]
                     personalization.suggestion_count += 1
                     personalization.last_suggested = now
-                
+
                 valid.append((rule, suggestion))
                 self._cooldowns[key] = now
 
@@ -102,7 +102,7 @@ class PolicyEngine:
 
         # Take top N and resolve to shortcuts
         results: list[SuggestionResult] = []
-        for rule, suggestion in valid[:top_n]:
+        for _rule, suggestion in valid[:top_n]:
             shortcut = self.shortcuts.get(suggestion.action)
             if shortcut:
                 results.append(
@@ -116,22 +116,22 @@ class PolicyEngine:
                 )
 
         return results
-    
+
     def _adjust_priority(self, rule: Rule, suggestion: Suggestion, now: datetime) -> Suggestion:
         """Adjust priority based on personalization data."""
         key = f"{rule.name}:{suggestion.action}"
         personalization = self._personalization[key]
-        
+
         original_priority = suggestion.priority
-        
+
         # Only apply significant adjustments when we have meaningful data
         # Start with original priority
         adjusted_priority = original_priority
-        
+
         # Need at least a few suggestions before making adjustments
         if personalization.suggestion_count >= 5:
             ctr = personalization.acceptance_count / personalization.suggestion_count
-            
+
             # Apply decay based on time since last acceptance
             time_factor = 1.0
             if personalization.last_accepted != datetime.min:
@@ -141,7 +141,7 @@ class PolicyEngine:
                 decay_time = max(0, time_since_acceptance - 3600)  # Start decay after 1 hour
                 time_decay = 0.9 ** (decay_time / (7 * 24 * 3600))  # Weak weekly decay
                 time_factor = time_decay
-            
+
             # Adjust based on CTR: boost frequently accepted, reduce rarely accepted
             if ctr > 0.4:  # High acceptance rate
                 ctr_factor = 1.15  # Boost by 15%
@@ -149,14 +149,14 @@ class PolicyEngine:
                 ctr_factor = 1.0  # No change
             else:  # Low acceptance rate
                 ctr_factor = 0.85  # Reduce by 15%
-            
+
             # Apply adjustments
             base_adjustment = (ctr_factor * time_factor)
             adjusted_priority = int(original_priority * base_adjustment)
-            
+
             # Ensure priority stays within bounds
             adjusted_priority = max(0, min(100, adjusted_priority))
-        
+
         # Return a new Suggestion with the possibly adjusted priority
         return Suggestion(
             action=suggestion.action,
@@ -173,14 +173,14 @@ class PolicyEngine:
         """
         # Update global acceptance tracking
         self._accepted[action] = self._accepted.get(action, 0) + 1
-        
+
         # Update personalization data if enabled
         if self.enable_personalization:
             key = f"{rule_name}:{action}"
             personalization = self._personalization[key]
             personalization.acceptance_count += 1
             personalization.last_accepted = datetime.now()
-            
+
             logger.debug(f"Marked suggestion as accepted: {key}, CTR now {personalization.acceptance_count}/{personalization.suggestion_count}")
 
     def get_acceptance_count(self, action: str) -> int:

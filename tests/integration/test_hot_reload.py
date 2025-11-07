@@ -4,8 +4,6 @@ import time
 from pathlib import Path
 from threading import Event
 
-import pytest
-
 from sage.watcher import ConfigWatcher
 
 
