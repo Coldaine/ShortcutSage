@@ -40,7 +40,11 @@ jobs:
             libxcb-xinerama0 \
             libxcb-xfixes0 \
             libxkbcommon-x11-0 \
-            x11-utils
+            x11-utils \
+            xvfb \
+            libegl1 \
+            libgl1 \
+            libglib2.0-0
 
       - name: Install Python dependencies
         run: |
@@ -61,7 +65,9 @@ jobs:
 
       - name: Test with pytest
         run: |
-          pytest --cov=sage --cov-report=term-missing --cov-report=xml --cov-fail-under=80
+          xvfb-run -a pytest --cov=sage --cov-report=term-missing --cov-report=xml --cov-fail-under=80
+        env:
+          QT_QPA_PLATFORM: offscreen
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
