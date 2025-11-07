@@ -1,0 +1,20 @@
+{
+    "KPlugin": {
+        "Name": "Shortcut Sage Event Monitor",
+        "Description": "Monitors desktop events and sends them to Shortcut Sage daemon for context-aware keyboard shortcut suggestions",
+        "Authors": [
+            {
+                "Name": "Coldaine",
+                "Email": "pmaclyman@gmail.com"
+            }
+        ],
+        "Category": "Accessibility",
+        "License": "MIT",
+        "Version": "0.1.0",
+        "Website": "https://github.com/Coldaine/ShortcutSage",
+        "Id": "shortcut-sage-event-monitor",
+        "EnabledByDefault": true
+    },
+    "X-Plasma-API": "javascript",
+    "X-Plasma-MainScript": "event-monitor.js"
+}

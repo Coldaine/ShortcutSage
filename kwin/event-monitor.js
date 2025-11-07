@@ -1,125 +1,170 @@
-/*
- * Shortcut Sage Event Monitor - KWin Script
- * Monitors KDE Plasma events and sends them to Shortcut Sage daemon
+/**
+ * Shortcut Sage - KWin Event Monitor
+ *
+ * Monitors desktop events and sends them to the Shortcut Sage daemon via DBus.
+ *
+ * Events monitored:
+ * - Desktop/workspace switches
+ * - Window focus changes
+ * - Show desktop state changes
+ *
+ * Dev shortcut: Meta+Shift+S sends a test event
  */
 
-// Configuration
-const DAEMON_SERVICE = "org.shortcutsage.Daemon";
-const DAEMON_PATH = "/org/shortcutsage/Daemon";
+// DBus connection to Shortcut Sage daemon
+const BUS_NAME = "org.shortcutsage.Daemon";
+const OBJECT_PATH = "/org/shortcutsage/Daemon";
+const INTERFACE = "org.shortcutsage.Daemon";
 
-// Initialize DBus interface
-function initDBus() {
-    try {
-        var dbusInterface = workspace.knownInterfaces[DAEMON_SERVICE];
-        if (dbusInterface) {
-            print("Found Shortcut Sage daemon interface");
-            return true;
-        } else {
-            print("Shortcut Sage daemon not available");
-            return false;
-        }
-    } catch (error) {
-        print("Failed to connect to Shortcut Sage daemon: " + error);
-        return false;
+// Logging configuration
+const DEBUG = true;  // Set to false in production
+const LOG_PREFIX = "[ShortcutSage]";
+
+// Helper function for logging
+function log(message) {
+    if (DEBUG) {
+        console.log(LOG_PREFIX + " " + message);
     }
 }
 
-// Function to send event to daemon via DBus
+function logError(message) {
+    console.error(LOG_PREFIX + " ERROR: " + message);
+}
+
+// Initialize the script
+log("Initializing KWin Event Monitor");
+
+/**
+ * Send an event to the daemon via DBus
+ * @param {string} type - Event type (e.g., "window_focus", "desktop_switch")
+ * @param {string} action - Action name (e.g., "show_desktop", "tile_left")
+ * @param {Object} metadata - Additional metadata (optional)
+ */
 function sendEvent(type, action, metadata) {
-    // Using DBus to call the daemon's SendEvent method
-    callDBus(
-        DAEMON_SERVICE,
-        DAEMON_PATH,
-        DAEMON_SERVICE,
-        "SendEvent",
-        JSON.stringify({
+    try {
+        // Build event object
+        const event = {
             timestamp: new Date().toISOString(),
             type: type,
             action: action,
             metadata: metadata || {}
-        })
-    );
-}
+        };
 
-// Monitor workspace events
-function setupEventListeners() {
-    // Desktop switch events
-    workspace.clientDesktopChanged.connect(function(client, desktop) {
-        sendEvent("desktop_switch", "switch_desktop", { 
-            window: client ? client.caption : "unknown",
-            desktop: desktop
-        });
-    });
+        const eventJson = JSON.stringify(event);
+        log("Sending event: " + eventJson);
 
-    // Window focus events
-    workspace.clientActivated.connect(function(client) {
-        if (client) {
-            sendEvent("window_focus", "window_focus", {
-                window: client.caption,
-                app: client.resourceClass ? client.resourceClass.toString() : "unknown"
-            });
-        }
-    });
-
-    // Screen edge activation (overview, etc.)
-    workspace.screenEdgeActivated.connect(function(edge, desktop) {
-        var action = "unknown";
-        if (edge === 0) action = "overview";  // Top edge usually shows overview
-        else if (edge === 2) action = "application_launcher";  // Bottom edge
-        else action = "screen_edge";
-        
-        sendEvent("desktop_state", action, {
-            edge: edge,
-            desktop: desktop
-        });
-    });
-
-    // Window geometry changes (for tiling, maximizing, etc.)
-    workspace.clientStepUserMovedResized.connect(function(client, step) {
-        if (client && step) {
-            var action = "window_move";
-            if (client.maximizedHorizontally && client.maximizedVertically) {
-                action = "maximize";
-            } else if (!client.maximizedHorizontally && !client.maximizedVertically) {
-                action = "window_move";
-            }
-            
-            sendEvent("window_state", action, {
-                window: client.caption,
-                maximized: client.maximizedHorizontally && client.maximizedVertically
-            });
-        }
-    });
-}
-
-// Register a test shortcut for development
-function setupTestShortcut() {
-    registerShortcut(
-        "Shortcut Sage Test", 
-        "Test shortcut for Shortcut Sage development", 
-        "Ctrl+Alt+S", 
-        function() {
-            sendEvent("test", "test_shortcut", { 
-                source: "kwin_script"
-            });
-        }
-    );
-}
-
-// Initialize when script loads
-function init() {
-    print("Shortcut Sage KWin script initializing...");
-    
-    if (initDBus()) {
-        setupEventListeners();
-        setupTestShortcut();
-        print("Shortcut Sage KWin script initialized successfully");
-    } else {
-        print("Shortcut Sage KWin script initialized in fallback mode - daemon not available");
-        // Still set up events but with fallback behavior if needed
-        setupTestShortcut();
+        // Call DBus method
+        callDBus(
+            BUS_NAME,
+            OBJECT_PATH,
+            INTERFACE,
+            "SendEvent",
+            eventJson
+        );
+    } catch (error) {
+        logError("Failed to send event: " + error);
     }
 }
 
-// Run initialization
-init();
+/**
+ * Ping the daemon to check if it's alive
+ */
+function pingDaemon() {
+    try {
+        const result = callDBus(
+            BUS_NAME,
+            OBJECT_PATH,
+            INTERFACE,
+            "Ping"
+        );
+        log("Ping result: " + result);
+        return result === "pong";
+    } catch (error) {
+        logError("Daemon not responding to ping: " + error);
+        return false;
+    }
+}
+
+// Track previous state to detect changes
+let previousDesktop = workspace.currentDesktop;
+let showingDesktop = workspace.showingDesktop;
+
+/**
+ * Monitor desktop/workspace switches
+ */
+workspace.currentDesktopChanged.connect(function(desktop, client) {
+    if (desktop !== previousDesktop) {
+        log("Desktop switched: " + previousDesktop + " -> " + desktop);
+        sendEvent(
+            "desktop_switch",
+            "switch_desktop",
+            {
+                from: previousDesktop,
+                to: desktop
+            }
+        );
+        previousDesktop = desktop;
+    }
+});
+
+/**
+ * Monitor "Show Desktop" state changes
+ */
+workspace.showingDesktopChanged.connect(function(showing) {
+    if (showing !== showingDesktop) {
+        log("Show desktop changed: " + showing);
+        const action = showing ? "show_desktop" : "hide_desktop";
+        sendEvent(
+            "show_desktop",
+            action,
+            { showing: showing }
+        );
+        showingDesktop = showing;
+    }
+});
+
+/**
+ * Monitor active window (focus) changes
+ */
+workspace.clientActivated.connect(function(client) {
+    if (client) {
+        log("Window activated: " + client.caption);
+        sendEvent(
+            "window_focus",
+            "window_activated",
+            {
+                // Don't include window title for privacy
+                // caption: client.caption,  // Disabled by default
+                resourceClass: client.resourceClass || "unknown"
+            }
+        );
+    }
+});
+
+/**
+ * Dev shortcut: Meta+Shift+S to send a test event
+ */
+registerShortcut(
+    "ShortcutSage: Test Event",
+    "ShortcutSage: Send Test Event (Meta+Shift+S)",
+    "Meta+Shift+S",
+    function() {
+        log("Test event triggered");
+        sendEvent(
+            "test",
+            "test_event",
+            { source: "dev_shortcut" }
+        );
+    }
+);
+
+// Ping daemon on startup to verify connection
+log("Pinging daemon...");
+if (pingDaemon()) {
+    log("Successfully connected to daemon");
+} else {
+    logError("Could not connect to daemon - is it running?");
+    logError("Start the daemon with: shortcut-sage daemon <config_dir>");
+}
+
+log("KWin Event Monitor initialized successfully");
