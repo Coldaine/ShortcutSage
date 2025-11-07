@@ -9,6 +9,9 @@
  * - Show desktop state changes
  *
  * Dev shortcut: Meta+Shift+S sends a test event
+ *
+ * Privacy: Window titles are NOT captured by default - only resource classes
+ * (application IDs) are sent to maintain user privacy.
  */
 
 // DBus connection to Shortcut Sage daemon
@@ -17,7 +20,7 @@ const OBJECT_PATH = "/org/shortcutsage/Daemon";
 const INTERFACE = "org.shortcutsage.Daemon";
 
 // Logging configuration
-const DEBUG = true;  // Set to false in production
+const DEBUG = false;  // Set to true for verbose logging during development
 const LOG_PREFIX = "[ShortcutSage]";
 
 // Helper function for logging
@@ -86,6 +89,8 @@ function pingDaemon() {
 }
 
 // Track previous state to detect changes
+// These variables must be mutable (using `let`) because they are updated
+// in event handlers to compare with new states
 let previousDesktop = workspace.currentDesktop;
 let showingDesktop = workspace.showingDesktop;
 
@@ -133,8 +138,6 @@ workspace.clientActivated.connect(function(client) {
             "window_focus",
             "window_activated",
             {
-                // Don't include window title for privacy
-                // caption: client.caption,  // Disabled by default
                 resourceClass: client.resourceClass || "unknown"
             }
         );
