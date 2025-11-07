@@ -138,6 +138,7 @@ workspace.clientActivated.connect(function(client) {
             "window_focus",
             "window_activated",
             {
+                // caption: client.caption,  // Uncomment to include window titles (privacy trade-off)
                 resourceClass: client.resourceClass || "unknown"
             }
         );
