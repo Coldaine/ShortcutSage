@@ -14,6 +14,7 @@ from typing import Any
 
 class EventType(Enum):
     """Types of events to track."""
+
     EVENT_RECEIVED = "event_received"
     SUGGESTION_SHOWN = "suggestion_shown"
     SUGGESTION_ACCEPTED = "suggestion_accepted"
@@ -26,6 +27,7 @@ class EventType(Enum):
 @dataclass
 class TelemetryEvent:
     """A telemetry event with timing and context."""
+
     event_type: EventType
     timestamp: datetime
     duration: float | None = None  # For timing measurements
@@ -75,12 +77,7 @@ class MetricsCollector:
             min_val = min(values)
             max_val = max(values)
 
-            return {
-                "count": count,
-                "avg": avg,
-                "min": min_val,
-                "max": max_val
-            }
+            return {"count": count, "avg": avg, "min": min_val, "max": max_val}
 
     def get_uptime(self) -> timedelta:
         """Get the uptime of the collector."""
@@ -92,11 +89,8 @@ class MetricsCollector:
             return {
                 "uptime": self.get_uptime().total_seconds(),
                 "counters": dict(self.counters),
-                "histograms": {
-                    name: self.get_histogram_stats(name)
-                    for name in self.histograms
-                },
-                "event_count": len(self.events)
+                "histograms": {name: self.get_histogram_stats(name) for name in self.histograms},
+                "event_count": len(self.events),
             }
 
     def reset_counters(self):
@@ -115,8 +109,8 @@ class LogRedactor:
         # Patterns to redact
         self.redaction_patterns = [
             # These are general patterns that might contain PII
-            r'\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b',  # IP addresses
-            r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',  # Email
+            r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b",  # IP addresses
+            r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b",  # Email
             # Window titles and app names could potentially contain PII
         ]
 
@@ -134,17 +128,16 @@ class LogRedactor:
 class RotatingTelemetryLogger:
     """Telemetry logger with rotation and redaction."""
 
-    def __init__(self, log_dir: str | Path, max_bytes: int = 10*1024*1024, backup_count: int = 5):
+    def __init__(
+        self, log_dir: str | Path, max_bytes: int = 10 * 1024 * 1024, backup_count: int = 5
+    ):
         self.log_dir = Path(log_dir)
         self.log_dir.mkdir(exist_ok=True)
 
         # Set up the NDJSON log file with rotation
         self.log_file = self.log_dir / "telemetry.ndjson"
         self.handler = logging.handlers.RotatingFileHandler(
-            self.log_file,
-            maxBytes=max_bytes,
-            backupCount=backup_count,
-            encoding='utf-8'
+            self.log_file, maxBytes=max_bytes, backupCount=backup_count, encoding="utf-8"
         )
 
         # Create logger
@@ -158,14 +151,18 @@ class RotatingTelemetryLogger:
         self.redactor = LogRedactor(enabled=True)
         self.metrics = MetricsCollector()
 
-    def log_event(self, event_type: EventType, duration: float | None = None,
-                  properties: dict[str, Any] | None = None):
+    def log_event(
+        self,
+        event_type: EventType,
+        duration: float | None = None,
+        properties: dict[str, Any] | None = None,
+    ):
         """Log an event with timing and properties."""
         event = TelemetryEvent(
             event_type=event_type,
             timestamp=datetime.now(),
             duration=duration,
-            properties=properties or {}
+            properties=properties or {},
         )
 
         # Record in metrics
@@ -181,7 +178,7 @@ class RotatingTelemetryLogger:
             "timestamp": event.timestamp.isoformat(),
             "event_type": event_type.value,
             "duration": duration,
-            "properties": self.redactor.redact(json.dumps(properties)) if properties else None
+            "properties": self.redactor.redact(json.dumps(properties)) if properties else None,
         }
 
         # Write as NDJSON (newline-delimited JSON)
@@ -191,10 +188,7 @@ class RotatingTelemetryLogger:
         """Log an error event."""
         self.log_event(
             EventType.ERROR_OCCURRED,
-            properties={
-                "error": self.redactor.redact(error_msg),
-                "context": context or {}
-            }
+            properties={"error": self.redactor.redact(error_msg), "context": context or {}},
         )
 
     def export_metrics(self) -> dict[str, Any]:
@@ -223,8 +217,9 @@ def get_telemetry() -> RotatingTelemetryLogger | None:
     return _telemetry_logger
 
 
-def log_event(event_type: EventType, duration: float | None = None,
-              properties: dict[str, Any] | None = None):
+def log_event(
+    event_type: EventType, duration: float | None = None, properties: dict[str, Any] | None = None
+):
     """Log an event using the global telemetry logger."""
     telemetry = get_telemetry()
     if telemetry:

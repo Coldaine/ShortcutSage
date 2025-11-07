@@ -108,7 +108,9 @@ class TestFeatureExtractor:
 
         actions = ["show_desktop", "overview", "tile_left"]
         for i, action in enumerate(actions):
-            buffer.add(Event(timestamp=now + timedelta(seconds=i * 0.5), type="test", action=action))
+            buffer.add(
+                Event(timestamp=now + timedelta(seconds=i * 0.5), type="test", action=action)
+            )
 
         extractor = FeatureExtractor(buffer)
         features = extractor.extract()
@@ -125,7 +127,9 @@ class TestFeatureExtractor:
 
         actions = ["action1", "action2", "action3", "action4", "action5"]
         for i, action in enumerate(actions):
-            buffer.add(Event(timestamp=now + timedelta(seconds=i * 0.5), type="test", action=action))
+            buffer.add(
+                Event(timestamp=now + timedelta(seconds=i * 0.5), type="test", action=action)
+            )
 
         extractor = FeatureExtractor(buffer)
         features = extractor.extract()

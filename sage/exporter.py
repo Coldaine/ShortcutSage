@@ -13,6 +13,7 @@ from sage.models import Shortcut, ShortcutsConfig
 @dataclass
 class DiscoveredShortcut:
     """Represents a shortcut discovered from KDE system."""
+
     action_id: str
     key_sequence: str
     description: str
@@ -33,32 +34,43 @@ class ShortcutExporter:
         try:
             # Use qdbus to get global accelerator info
             # This might not work without a running Plasma session, so we'll handle it gracefully
-            result = subprocess.run([
-                'qdbus', 'org.kde.kglobalaccel', '/kglobalaccel',
-                'org.kde.kglobalaccel.shortcuts'
-            ], capture_output=True, text=True, timeout=5)
+            result = subprocess.run(
+                [
+                    "qdbus",
+                    "org.kde.kglobalaccel",
+                    "/kglobalaccel",
+                    "org.kde.kglobalaccel.shortcuts",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
 
             if result.returncode == 0:
                 # Parse the output to extract shortcuts
-                lines = result.stdout.strip().split('\n')
+                lines = result.stdout.strip().split("\n")
                 for line in lines:
-                    if ':' in line:
-                        parts = line.strip().split(':', 2)
+                    if ":" in line:
+                        parts = line.strip().split(":", 2)
                         if len(parts) >= 3:
                             action_id = parts[0].strip()
                             key_sequence = parts[1].strip()
                             description = parts[2].strip() if len(parts) > 2 else action_id
 
-                            discovered.append(DiscoveredShortcut(
-                                action_id=action_id.lower().replace(' ', '_').replace('-', '_'),
-                                key_sequence=key_sequence,
-                                description=description,
-                                category="system",
-                                source="kglobalaccel"
-                            ))
+                            discovered.append(
+                                DiscoveredShortcut(
+                                    action_id=action_id.lower().replace(" ", "_").replace("-", "_"),
+                                    key_sequence=key_sequence,
+                                    description=description,
+                                    category="system",
+                                    source="kglobalaccel",
+                                )
+                            )
         except (subprocess.TimeoutExpired, subprocess.CalledProcessError, FileNotFoundError):
             # This is expected on systems without KDE Plasma
-            print("Warning: Could not access kglobalaccel (not running KDE Plasma?)", file=sys.stderr)
+            print(
+                "Warning: Could not access kglobalaccel (not running KDE Plasma?)", file=sys.stderr
+            )
 
         return discovered
 
@@ -83,39 +95,41 @@ class ShortcutExporter:
         discovered = []
 
         try:
-            with open(config_path, encoding='utf-8') as f:
+            with open(config_path, encoding="utf-8") as f:
                 content = f.read()
 
             # This is a simplified parser for KDE config files
             # Format: [Category] followed by action=shortcut,description,comment
-            lines = content.split('\n')
+            lines = content.split("\n")
             current_category = "unknown"
 
             for line in lines:
                 line = line.strip()
-                if line.startswith('[') and line.endswith(']'):
+                if line.startswith("[") and line.endswith("]"):
                     # New section
                     current_category = line[1:-1]
-                elif '=' in line and not line.startswith('#'):
+                elif "=" in line and not line.startswith("#"):
                     # Potential shortcut line
-                    parts = line.split('=', 1)
+                    parts = line.split("=", 1)
                     if len(parts) == 2:
                         action_id = parts[0].strip()
                         value_part = parts[1].strip()
 
                         # KDE shortcut format is usually: key,comment,friendly_name
-                        value_parts = value_part.split(',', 2)
+                        value_parts = value_part.split(",", 2)
                         if len(value_parts) >= 1:
                             key_sequence = value_parts[0]
                             description = value_parts[2] if len(value_parts) > 2 else action_id
 
-                            discovered.append(DiscoveredShortcut(
-                                action_id=action_id.lower().replace(' ', '_').replace('-', '_'),
-                                key_sequence=key_sequence,
-                                description=description,
-                                category=current_category,
-                                source=str(config_path)
-                            ))
+                            discovered.append(
+                                DiscoveredShortcut(
+                                    action_id=action_id.lower().replace(" ", "_").replace("-", "_"),
+                                    key_sequence=key_sequence,
+                                    description=description,
+                                    category=current_category,
+                                    source=str(config_path),
+                                )
+                            )
         except Exception as e:
             print(f"Warning: Could not parse config file {config_path}: {e}", file=sys.stderr)
 
@@ -135,8 +149,11 @@ class ShortcutExporter:
         unique_shortcuts = {}
         for shortcut in all_discovered:
             # Use the action_id as key to deduplicate
-            if (shortcut.key_sequence and shortcut.key_sequence.strip()
-                    and shortcut.action_id not in unique_shortcuts):
+            if (
+                shortcut.key_sequence
+                and shortcut.key_sequence.strip()
+                and shortcut.action_id not in unique_shortcuts
+            ):
                 unique_shortcuts[shortcut.action_id] = shortcut
 
         self.discovered_shortcuts = list(unique_shortcuts.values())
@@ -154,7 +171,7 @@ class ShortcutExporter:
                         key=ds.key_sequence,
                         action=ds.action_id,
                         description=ds.description,
-                        category=ds.category
+                        category=ds.category,
                     )
                     shortcut_models.append(shortcut)
                 except ValidationError as e:
@@ -162,14 +179,12 @@ class ShortcutExporter:
                     continue
 
             # Create the config model
-            config = ShortcutsConfig(
-                version="1.0",
-                shortcuts=shortcut_models
-            )
+            config = ShortcutsConfig(version="1.0", shortcuts=shortcut_models)
 
             # Write to YAML file
             import yaml
-            with open(output_file, 'w', encoding='utf-8') as f:
+
+            with open(output_file, "w", encoding="utf-8") as f:
                 yaml.dump(config.model_dump(), f, default_flow_style=False, allow_unicode=True)
 
             print(f"Exported {len(config.shortcuts)} shortcuts to {output_file}")
@@ -205,6 +220,7 @@ def main():
 
         # Create a minimal shortcuts file if nothing found
         import yaml
+
         basic_shortcuts = {
             "version": "1.0",
             "shortcuts": [
@@ -212,12 +228,12 @@ def main():
                     "key": "Meta+D",
                     "action": "show_desktop",
                     "description": "Show desktop",
-                    "category": "desktop"
+                    "category": "desktop",
                 }
-            ]
+            ],
         }
 
-        with open(output_file, 'w', encoding='utf-8') as f:
+        with open(output_file, "w", encoding="utf-8") as f:
             yaml.dump(basic_shortcuts, f, default_flow_style=False)
 
         print(f"Created basic shortcuts file at {output_file}")

@@ -53,14 +53,14 @@ class TestOverlayWindow:
                 "action": "overview",
                 "key": "Meta+Tab",
                 "description": "Show application overview",
-                "priority": 80
+                "priority": 80,
             },
             {
                 "action": "tile_left",
                 "key": "Meta+Left",
                 "description": "Tile window to left half",
-                "priority": 60
-            }
+                "priority": 60,
+            },
         ]
 
         overlay.set_suggestions_fallback(suggestions)
@@ -74,14 +74,16 @@ class TestOverlayWindow:
         """Test processing suggestions from JSON."""
         overlay = OverlayWindow(dbus_available=False)
 
-        suggestions_json = json.dumps([
-            {
-                "action": "test_action",
-                "key": "Ctrl+T",
-                "description": "Test shortcut",
-                "priority": 75
-            }
-        ])
+        suggestions_json = json.dumps(
+            [
+                {
+                    "action": "test_action",
+                    "key": "Ctrl+T",
+                    "description": "Test shortcut",
+                    "priority": 75,
+                }
+            ]
+        )
 
         overlay.on_suggestions(suggestions_json)
 

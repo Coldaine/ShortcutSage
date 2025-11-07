@@ -112,14 +112,14 @@ class DevHintsPanel(QWidget):
             metrics = self.telemetry.export_metrics()
 
             stats_text = f"""Runtime Statistics:
-Uptime: {metrics.get('uptime', 0):.1f}s
-Total Events Processed: {metrics['counters'].get('event_received', 0)}
-Suggestions Shown: {metrics['counters'].get('suggestion_shown', 0)}
-Suggestions Accepted: {metrics['counters'].get('suggestion_accepted', 0)}
-Errors: {metrics['counters'].get('error_occurred', 0)}
+Uptime: {metrics.get("uptime", 0):.1f}s
+Total Events Processed: {metrics["counters"].get("event_received", 0)}
+Suggestions Shown: {metrics["counters"].get("suggestion_shown", 0)}
+Suggestions Accepted: {metrics["counters"].get("suggestion_accepted", 0)}
+Errors: {metrics["counters"].get("error_occurred", 0)}
 
 Performance:
-Event Processing Time: {metrics['histograms'].get('event_received', {}).get('avg', 0):.3f}s avg
+Event Processing Time: {metrics["histograms"].get("event_received", {}).get("avg", 0):.3f}s avg
 Last 10 Events: {len(self.telemetry.events)}"""
 
             self.stats_text.setPlainText(stats_text)
@@ -149,7 +149,7 @@ Last 10 Events: {len(self.telemetry.events)}"""
                 event_lines.append(event_line)
 
                 # Extract suggestion info
-                if event.event_type.value == 'suggestion_shown' and event.properties:
+                if event.event_type.value == "suggestion_shown" and event.properties:
                     suggestion_lines.append(
                         f"[{timestamp}] SUGGESTION: {event.properties.get('action', 'N/A')} "
                         f"({event.properties.get('key', 'N/A')}) priority={event.properties.get('priority', 'N/A')}"
@@ -157,7 +157,9 @@ Last 10 Events: {len(self.telemetry.events)}"""
 
             # Update text areas
             self.events_trace.setPlainText("\n".join(reversed(event_lines)))
-            self.suggestions_trace.setPlainText("\n".join(reversed(suggestion_lines[-10:])))  # Last 10 suggestions
+            self.suggestions_trace.setPlainText(
+                "\n".join(reversed(suggestion_lines[-10:]))
+            )  # Last 10 suggestions
         else:
             self.events_trace.setPlainText("No telemetry data available")
             self.suggestions_trace.setPlainText("No suggestion data available")

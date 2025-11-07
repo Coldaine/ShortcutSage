@@ -127,13 +127,14 @@ rules:
             "timestamp": datetime.now().isoformat(),
             "type": "test",
             "action": "show_desktop",
-            "metadata": {}
+            "metadata": {},
         }
 
         event_json = json.dumps(event_data)
 
         # Capture suggestions
         suggestions_captured = []
+
         def suggestions_callback(suggestions):
             suggestions_captured.extend(suggestions)
 

@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class AuditReport:
     """Structure for audit report results."""
+
     timestamp: datetime
     summary: dict[str, Any]
     suggestions: list[str]
@@ -31,7 +32,7 @@ class TelemetryBatchProcessor:
         """Read all telemetry entries from NDJSON files."""
         # Look for current and rotated log files
         for log_path in self.log_dir.glob("telemetry*.ndjson"):
-            with open(log_path, encoding='utf-8') as f:
+            with open(log_path, encoding="utf-8") as f:
                 for line_num, line in enumerate(f, 1):
                     line = line.strip()
                     if line:
@@ -50,7 +51,7 @@ class TelemetryBatchProcessor:
                 timestamp=datetime.now(),
                 summary={"total_events": 0},
                 suggestions=[],
-                issues=["No telemetry data found"]
+                issues=["No telemetry data found"],
             )
 
         # Calculate metrics
@@ -61,10 +62,10 @@ class TelemetryBatchProcessor:
         durations = defaultdict(list)
 
         for event in events:
-            event_type = event.get('event_type', 'unknown')
+            event_type = event.get("event_type", "unknown")
             event_counts[event_type] += 1
 
-            duration = event.get('duration')
+            duration = event.get("duration")
             if duration is not None:
                 durations[event_type].append(duration)
 
@@ -79,7 +80,7 @@ class TelemetryBatchProcessor:
         suggestions = []
 
         # Check for error frequency
-        error_count = event_counts.get('error_occurred', 0)
+        error_count = event_counts.get("error_occurred", 0)
         if error_count > 0:
             error_rate = error_count / total_events
             if error_rate > 0.05:  # More than 5% errors
@@ -87,14 +88,15 @@ class TelemetryBatchProcessor:
 
         # Check for performance issues
         slow_processing_threshold = 1.0  # 1 second
-        slow_events = [(et, avg) for et, avg in avg_durations.items()
-                      if avg > slow_processing_threshold]
+        slow_events = [
+            (et, avg) for et, avg in avg_durations.items() if avg > slow_processing_threshold
+        ]
         for event_type, avg_duration in slow_events:
             issues.append(f"Slow {event_type}: avg {avg_duration:.2f}s")
             suggestions.append(f"Optimize {event_type} processing")
 
         # Check for suggestion acceptance patterns
-        suggestion_count = event_counts.get('suggestion_shown', 0)
+        suggestion_count = event_counts.get("suggestion_shown", 0)
         if suggestion_count > 0:
             # If we had suggestions, recommend reviewing them
             suggestions.append(f"Review {suggestion_count} shown suggestions for relevance")
@@ -105,24 +107,21 @@ class TelemetryBatchProcessor:
             "event_type_counts": dict(event_counts),
             "average_durations": {k: round(v, 3) for k, v in avg_durations.items()},
             "time_range": self._get_time_range(events),
-            "error_count": error_count
+            "error_count": error_count,
         }
 
         return AuditReport(
-            timestamp=datetime.now(),
-            summary=summary,
-            suggestions=suggestions,
-            issues=issues
+            timestamp=datetime.now(), summary=summary, suggestions=suggestions, issues=issues
         )
 
     def _get_time_range(self, events: list[dict[str, Any]]) -> dict[str, str]:
         """Get the time range of the events."""
         timestamps = []
         for event in events:
-            ts_str = event.get('timestamp')
+            ts_str = event.get("timestamp")
             if ts_str:
                 try:
-                    timestamps.append(datetime.fromisoformat(ts_str.replace('Z', '+00:00')))
+                    timestamps.append(datetime.fromisoformat(ts_str.replace("Z", "+00:00")))
                 except ValueError:
                     continue
 
@@ -135,7 +134,7 @@ class TelemetryBatchProcessor:
         return {
             "start": start_time.isoformat(),
             "end": end_time.isoformat(),
-            "duration_hours": (end_time - start_time).total_seconds() / 3600
+            "duration_hours": (end_time - start_time).total_seconds() / 3600,
         }
 
     def generate_dev_report(self) -> str:
@@ -150,8 +149,8 @@ class TelemetryBatchProcessor:
             f"  Total Events: {report.summary['total_events']}",
         ]
 
-        if 'time_range' in report.summary and report.summary['time_range']:
-            time_range = report.summary['time_range']
+        if "time_range" in report.summary and report.summary["time_range"]:
+            time_range = report.summary["time_range"]
             output_lines.append(f"  Time Range: {time_range['start']} to {time_range['end']}")
             output_lines.append(f"  Duration: {time_range.get('duration_hours', 0):.2f} hours")
 
@@ -160,14 +159,14 @@ class TelemetryBatchProcessor:
         # Event type breakdown
         output_lines.append("")
         output_lines.append("Event Type Counts:")
-        for event_type, count in sorted(report.summary['event_type_counts'].items()):
+        for event_type, count in sorted(report.summary["event_type_counts"].items()):
             output_lines.append(f"  {event_type}: {count}")
 
         # Average durations
-        if report.summary['average_durations']:
+        if report.summary["average_durations"]:
             output_lines.append("")
             output_lines.append("Average Durations:")
-            for event_type, avg_duration in sorted(report.summary['average_durations'].items()):
+            for event_type, avg_duration in sorted(report.summary["average_durations"].items()):
                 output_lines.append(f"  {event_type}: {avg_duration:.3f}s")
 
         # Issues

@@ -40,9 +40,7 @@ class TestConfigLoader:
         assert len(config.shortcuts) == 3
         assert config.shortcuts[0].action == "show_desktop"
 
-    def test_load_rules_success(
-        self, tmp_config_dir: Path, sample_rules_yaml: Path
-    ) -> None:
+    def test_load_rules_success(self, tmp_config_dir: Path, sample_rules_yaml: Path) -> None:
         """Test loading valid rules config."""
         loader = ConfigLoader(tmp_config_dir)
         config = loader.load_rules()

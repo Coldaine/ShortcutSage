@@ -93,9 +93,7 @@ class Rule(BaseModel):
     name: str = Field(description="Unique rule name")
     context: ContextMatch
     suggest: list[Suggestion] = Field(min_length=1, description="Suggestions to surface")
-    cooldown: int = Field(
-        default=300, ge=0, le=3600, description="Seconds before re-suggesting"
-    )
+    cooldown: int = Field(default=300, ge=0, le=3600, description="Seconds before re-suggesting")
 
     @field_validator("name")
     @classmethod

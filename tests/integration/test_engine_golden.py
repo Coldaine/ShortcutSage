@@ -17,12 +17,8 @@ class TestEngineGoldenScenarios:
         """Golden: show_desktop event → suggests overview and tiling."""
         # Setup
         shortcuts = {
-            "overview": Shortcut(
-                key="Meta+Tab", action="overview", description="Show overview"
-            ),
-            "tile_left": Shortcut(
-                key="Meta+Left", action="tile_left", description="Tile left"
-            ),
+            "overview": Shortcut(key="Meta+Tab", action="overview", description="Show overview"),
+            "tile_left": Shortcut(key="Meta+Left", action="tile_left", description="Tile left"),
         }
 
         rules = [
@@ -67,12 +63,8 @@ class TestEngineGoldenScenarios:
     def test_tile_left_suggests_tile_right(self) -> None:
         """Golden: tile_left → suggests tile_right."""
         shortcuts = {
-            "tile_right": Shortcut(
-                key="Meta+Right", action="tile_right", description="Tile right"
-            ),
-            "overview": Shortcut(
-                key="Meta+Tab", action="overview", description="Overview"
-            ),
+            "tile_right": Shortcut(key="Meta+Right", action="tile_right", description="Tile right"),
+            "overview": Shortcut(key="Meta+Tab", action="overview", description="Overview"),
         }
 
         rules = [
@@ -109,9 +101,7 @@ class TestEngineGoldenScenarios:
     def test_cooldown_prevents_duplicate_suggestion(self) -> None:
         """Golden: Cooldown blocks repeated suggestions."""
         shortcuts = {
-            "overview": Shortcut(
-                key="Meta+Tab", action="overview", description="Overview"
-            ),
+            "overview": Shortcut(key="Meta+Tab", action="overview", description="Overview"),
         }
 
         rules = [

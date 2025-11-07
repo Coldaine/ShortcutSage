@@ -111,7 +111,7 @@ class PolicyEngine:
                         key=shortcut.key,
                         description=shortcut.description,
                         priority=suggestion.priority,  # This is now the adjusted priority
-                        adjusted_priority=suggestion.priority  # Same as priority since it's adjusted
+                        adjusted_priority=suggestion.priority,  # Same as priority since it's adjusted
                     )
                 )
 
@@ -151,17 +151,14 @@ class PolicyEngine:
                 ctr_factor = 0.85  # Reduce by 15%
 
             # Apply adjustments
-            base_adjustment = (ctr_factor * time_factor)
+            base_adjustment = ctr_factor * time_factor
             adjusted_priority = int(original_priority * base_adjustment)
 
             # Ensure priority stays within bounds
             adjusted_priority = max(0, min(100, adjusted_priority))
 
         # Return a new Suggestion with the possibly adjusted priority
-        return Suggestion(
-            action=suggestion.action,
-            priority=adjusted_priority
-        )
+        return Suggestion(action=suggestion.action, priority=adjusted_priority)
 
     def mark_accepted(self, action: str, rule_name: str = "unknown") -> None:
         """
@@ -181,7 +178,9 @@ class PolicyEngine:
             personalization.acceptance_count += 1
             personalization.last_accepted = datetime.now()
 
-            logger.debug(f"Marked suggestion as accepted: {key}, CTR now {personalization.acceptance_count}/{personalization.suggestion_count}")
+            logger.debug(
+                f"Marked suggestion as accepted: {key}, CTR now {personalization.acceptance_count}/{personalization.suggestion_count}"
+            )
 
     def get_acceptance_count(self, action: str) -> int:
         """

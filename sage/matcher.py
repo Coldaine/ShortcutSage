@@ -56,9 +56,7 @@ class RuleMatcher:
 
         return False
 
-    def _match_event_sequence(
-        self, pattern: str | list[str], features: dict[str, Any]
-    ) -> bool:
+    def _match_event_sequence(self, pattern: str | list[str], features: dict[str, Any]) -> bool:
         """Match event sequence pattern."""
         recent = features.get("recent_actions", [])
         if not recent:
@@ -69,16 +67,12 @@ class RuleMatcher:
         # Simple substring match: any pattern in recent actions
         return any(p in recent for p in patterns)
 
-    def _match_recent_window(
-        self, pattern: str | list[str], features: dict[str, Any]
-    ) -> bool:
+    def _match_recent_window(self, pattern: str | list[str], features: dict[str, Any]) -> bool:
         """Match recent window pattern (stub for MVP)."""
         # MVP: Same as event_sequence
         return self._match_event_sequence(pattern, features)
 
-    def _match_desktop_state(
-        self, pattern: str | list[str], features: dict[str, Any]
-    ) -> bool:
+    def _match_desktop_state(self, pattern: str | list[str], features: dict[str, Any]) -> bool:
         """Match desktop state pattern (stub for MVP)."""
         # MVP: Same as event_sequence
         return self._match_event_sequence(pattern, features)

@@ -40,6 +40,7 @@ class Daemon:
 
         # Initialize telemetry
         from pathlib import Path
+
         if log_dir is None:
             # Default log directory
             log_dir = Path.home() / ".local" / "share" / "shortcut-sage" / "logs"
@@ -49,10 +50,10 @@ class Daemon:
         self.telemetry = init_telemetry(self.log_dir)
 
         # Log daemon start
-        log_event(EventType.DAEMON_START, properties={
-            "dbus_enabled": self.enable_dbus,
-            "config_dir": str(config_dir)
-        })
+        log_event(
+            EventType.DAEMON_START,
+            properties={"dbus_enabled": self.enable_dbus, "config_dir": str(config_dir)},
+        )
 
         # Load configuration
         self.config_loader = ConfigLoader(config_dir)
@@ -62,9 +63,7 @@ class Daemon:
         self.buffer = RingBuffer(window_seconds=3.0)
         self.feature_extractor = FeatureExtractor(self.buffer)
         self.rule_matcher = RuleMatcher(self.rules_config.rules)
-        self.policy_engine = PolicyEngine(
-            {s.action: s for s in self.shortcuts_config.shortcuts}
-        )
+        self.policy_engine = PolicyEngine({s.action: s for s in self.shortcuts_config.shortcuts})
 
         # Set up config reload callback
         self._setup_config_reload()
@@ -127,9 +126,7 @@ class Daemon:
 
             timestamp_str = event_data["timestamp"]
             if isinstance(timestamp_str, str):
-                timestamp = datetime.fromisoformat(
-                    timestamp_str.replace("Z", "+00:00")
-                )
+                timestamp = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
             else:
                 timestamp = timestamp_str
 
@@ -162,24 +159,33 @@ class Daemon:
 
                 # Log detailed suggestions if any
                 for i, suggestion in enumerate(suggestions):
-                    logger.debug(f"Suggestion {i+1}: {suggestion.action} ({suggestion.key}) - priority {suggestion.priority}")
+                    logger.debug(
+                        f"Suggestion {i + 1}: {suggestion.action} ({suggestion.key}) - priority {suggestion.priority}"
+                    )
 
             # Log to telemetry
-            log_event(EventType.EVENT_RECEIVED, duration=processing_time, properties={
-                "action": event.action,
-                "type": event.type,
-                "suggestions_count": len(suggestions),
-                "processing_time": processing_time,
-                "latency": latency
-            })
+            log_event(
+                EventType.EVENT_RECEIVED,
+                duration=processing_time,
+                properties={
+                    "action": event.action,
+                    "type": event.type,
+                    "suggestions_count": len(suggestions),
+                    "processing_time": processing_time,
+                    "latency": latency,
+                },
+            )
 
             # Log each suggestion shown
             for suggestion in suggestions:
-                log_event(EventType.SUGGESTION_SHOWN, properties={
-                    "action": suggestion.action,
-                    "key": suggestion.key,
-                    "priority": suggestion.priority
-                })
+                log_event(
+                    EventType.SUGGESTION_SHOWN,
+                    properties={
+                        "action": suggestion.action,
+                        "key": suggestion.key,
+                        "priority": suggestion.priority,
+                    },
+                )
 
             # Emit the suggestions
             self.emit_suggestions(suggestions)
@@ -193,10 +199,11 @@ class Daemon:
                 logger.error(f"Event processing failed after {processing_time:.3f}s: {e}")
 
             # Log error to telemetry
-            log_event(EventType.ERROR_OCCURRED, duration=time.time() - start_time, properties={
-                "error": str(e),
-                "error_type": type(e).__name__
-            })
+            log_event(
+                EventType.ERROR_OCCURRED,
+                duration=time.time() - start_time,
+                properties={"error": str(e), "error_type": type(e).__name__},
+            )
 
     def ping(self) -> str:
         """Simple ping method to check if daemon is alive."""
@@ -205,15 +212,17 @@ class Daemon:
     def emit_suggestions(self, suggestions: list[SuggestionResult]) -> str:
         """Emit suggestions (as signal if DBus available, or via callback)."""
         # Convert suggestions to JSON
-        suggestions_json = json.dumps([
-            {
-                "action": s.action,
-                "key": s.key,
-                "description": s.description,
-                "priority": s.priority,
-            }
-            for s in suggestions
-        ])
+        suggestions_json = json.dumps(
+            [
+                {
+                    "action": s.action,
+                    "key": s.key,
+                    "description": s.description,
+                    "priority": s.priority,
+                }
+                for s in suggestions
+            ]
+        )
         logger.debug(f"Emitted suggestions: {suggestions_json}")
 
         # If not using DBus, call the callback if available
@@ -262,6 +271,7 @@ def main():
         print(f"Received signal {signum}, shutting down...")
         # Log daemon stop
         from sage.telemetry import EventType, log_event
+
         log_event(EventType.DAEMON_STOP, properties={"signal": signum})
         daemon.stop()
         sys.exit(0)
@@ -318,9 +328,12 @@ def main():
             print("Interrupted, shutting down...")
             # Log daemon stop
             from sage.telemetry import EventType, log_event
+
             log_event(EventType.DAEMON_STOP, properties={"signal": "SIGINT"})
             daemon.stop()
     else:
         # In fallback mode, just keep the process alive
         print("Running in fallback mode (no DBus). Process will exit immediately.")
-        print("In a real implementation, you might want to set up a different IPC mechanism or event loop.")
+        print(
+            "In a real implementation, you might want to set up a different IPC mechanism or event loop."
+        )

@@ -33,9 +33,7 @@ class ConfigWatcher:
             return
 
         self.observer = Observer()
-        self.observer.schedule(
-            self._handler, str(self.config_dir), recursive=False
-        )
+        self.observer.schedule(self._handler, str(self.config_dir), recursive=False)
         self.observer.start()
         logger.info(f"Started watching config directory: {self.config_dir}")
 

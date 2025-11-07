@@ -18,9 +18,7 @@ class TestShortcut:
 
     def test_valid_shortcut(self) -> None:
         """Test creating a valid shortcut."""
-        shortcut = Shortcut(
-            key="Meta+D", action="show_desktop", description="Show desktop"
-        )
+        shortcut = Shortcut(key="Meta+D", action="show_desktop", description="Show desktop")
         assert shortcut.key == "Meta+D"
         assert shortcut.action == "show_desktop"
         assert shortcut.description == "Show desktop"
@@ -48,9 +46,7 @@ class TestShortcut:
 
     def test_action_normalized_to_lowercase(self) -> None:
         """Test that action is normalized to lowercase."""
-        shortcut = Shortcut(
-            key="Meta+D", action="Show_Desktop", description="Test"
-        )
+        shortcut = Shortcut(key="Meta+D", action="Show_Desktop", description="Test")
         assert shortcut.action == "show_desktop"
 
     def test_invalid_action_characters(self) -> None:
@@ -84,9 +80,7 @@ class TestShortcutsConfig:
             ShortcutsConfig(
                 shortcuts=[
                     Shortcut(key="Meta+D", action="show_desktop", description="First"),
-                    Shortcut(
-                        key="Meta+Shift+D", action="show_desktop", description="Second"
-                    ),
+                    Shortcut(key="Meta+Shift+D", action="show_desktop", description="Second"),
                 ]
             )
 
@@ -103,9 +97,7 @@ class TestContextMatch:
 
     def test_valid_context_list_pattern(self) -> None:
         """Test context with list pattern."""
-        context = ContextMatch(
-            type="event_sequence", pattern=["show_desktop", "overview"]
-        )
+        context = ContextMatch(type="event_sequence", pattern=["show_desktop", "overview"])
         assert isinstance(context.pattern, list)
         assert len(context.pattern) == 2
 

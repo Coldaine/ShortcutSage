@@ -90,10 +90,10 @@ class OverlayWindow(QWidget):
     def setup_window(self):
         """Configure window properties for overlay."""
         self.setWindowFlags(
-            Qt.WindowType.FramelessWindowHint |
-            Qt.WindowType.WindowStaysOnTopHint |
-            Qt.WindowType.WindowTransparentForInput |
-            Qt.WindowType.WindowDoesNotAcceptFocus
+            Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.WindowStaysOnTopHint
+            | Qt.WindowType.WindowTransparentForInput
+            | Qt.WindowType.WindowDoesNotAcceptFocus
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)
@@ -124,8 +124,7 @@ class OverlayWindow(QWidget):
 
             bus = dbus.SessionBus()
             self.dbus_interface = bus.get_object(
-                "org.shortcutsage.Daemon",
-                "/org/shortcutsage/Daemon"
+                "org.shortcutsage.Daemon", "/org/shortcutsage/Daemon"
             )
 
             # Connect to the suggestions signal
@@ -133,7 +132,7 @@ class OverlayWindow(QWidget):
                 self.on_suggestions,
                 signal_name="Suggestions",
                 dbus_interface="org.shortcutsage.Daemon",
-                path="/org/shortcutsage/Daemon"
+                path="/org/shortcutsage/Daemon",
             )
 
             logger.info("Connected to Shortcut Sage daemon via DBus")
@@ -164,7 +163,7 @@ class OverlayWindow(QWidget):
             chip = SuggestionChip(
                 key=suggestion["key"],
                 description=suggestion["description"],
-                priority=suggestion["priority"]
+                priority=suggestion["priority"],
             )
             self.layout.addWidget(chip)
             self.chips.append(chip)
@@ -217,14 +216,14 @@ def main():
                 "action": "overview",
                 "key": "Meta+Tab",
                 "description": "Show application overview",
-                "priority": 80
+                "priority": 80,
             },
             {
                 "action": "tile_left",
                 "key": "Meta+Left",
                 "description": "Tile window to left half",
-                "priority": 60
-            }
+                "priority": 60,
+            },
         ]
         overlay.set_suggestions_fallback(test_suggestions)
 

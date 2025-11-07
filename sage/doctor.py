@@ -13,50 +13,72 @@ def check_system_requirements() -> list[tuple[str, bool, str]]:
 
     # Check Python version
     python_ok = sys.version_info >= (3, 11)
-    results.append(("Python 3.11+", python_ok, f"Current: {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"))
+    results.append(
+        (
+            "Python 3.11+",
+            python_ok,
+            f"Current: {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
+        )
+    )
 
     # Check if we're on Linux (for KDE)
-    linux_ok = sys.platform.startswith('linux')
+    linux_ok = sys.platform.startswith("linux")
     results.append(("Linux platform", linux_ok, f"Current: {sys.platform}"))
 
     # Check if DBus is available
     import importlib.util
+
     dbus_ok = importlib.util.find_spec("dbus") is not None
     if dbus_ok:
         results.append(("DBus Python library", dbus_ok, "Available"))
     else:
-        results.append(("DBus Python library", dbus_ok, "Not available - install with: pip install 'shortcut-sage[dbus]'"))
+        results.append(
+            (
+                "DBus Python library",
+                dbus_ok,
+                "Not available - install with: pip install 'shortcut-sage[dbus]'",
+            )
+        )
 
     # Check PySide6
     pyside_ok = importlib.util.find_spec("PySide6") is not None
     if pyside_ok:
         results.append(("PySide6 library", pyside_ok, "Available"))
     else:
-        results.append(("PySide6 library", pyside_ok, "Not available - install with: pip install PySide6"))
+        results.append(
+            ("PySide6 library", pyside_ok, "Not available - install with: pip install PySide6")
+        )
 
     return results
+
 
 def check_kde_environment() -> list[tuple[str, bool, str]]:
     """Check if running in KDE environment."""
     results = []
 
     # Check if running under X11/Wayland with KDE
-    session_type = os.environ.get('XDG_SESSION_TYPE', 'unknown')
+    session_type = os.environ.get("XDG_SESSION_TYPE", "unknown")
     results.append(("Session type", True, f"Detected: {session_type}"))
 
     # Check for KDE-specific environment variables
-    has_kde = 'KDE' in os.environ.get('DESKTOP_SESSION', '') or 'plasma' in os.environ.get('XDG_CURRENT_DESKTOP', '').lower()
+    has_kde = (
+        "KDE" in os.environ.get("DESKTOP_SESSION", "")
+        or "plasma" in os.environ.get("XDG_CURRENT_DESKTOP", "").lower()
+    )
     results.append(("KDE/Plasma environment", has_kde, "Required for full functionality"))
 
     # Check if kglobalaccel is running
     try:
-        result = subprocess.run(['pgrep', 'kglobalaccel5'], capture_output=True)
+        result = subprocess.run(["pgrep", "kglobalaccel5"], capture_output=True)
         kglobalaccel_running = result.returncode == 0
-        results.append(("KGlobalAccel running", kglobalaccel_running, "Required for shortcut detection"))
+        results.append(
+            ("KGlobalAccel running", kglobalaccel_running, "Required for shortcut detection")
+        )
     except FileNotFoundError:
         results.append(("KGlobalAccel check", False, "pgrep not found - cannot verify"))
 
     return results
+
 
 def check_config_files(config_dir: Path) -> list[tuple[str, bool, str]]:
     """Check if required config files exist."""
@@ -69,6 +91,7 @@ def check_config_files(config_dir: Path) -> list[tuple[str, bool, str]]:
     results.append(("rules.yaml exists", rules_file.exists(), str(rules_file)))
 
     return results
+
 
 def create_default_configs(config_dir: Path) -> bool:
     """Create default configuration files if they don't exist."""
@@ -158,20 +181,21 @@ rules:
     rules_path = config_dir / "rules.yaml"
 
     if not shortcuts_path.exists():
-        with open(shortcuts_path, 'w', encoding='utf-8') as f:
+        with open(shortcuts_path, "w", encoding="utf-8") as f:
             f.write(shortcuts_default)
         print(f"Created default shortcuts config: {shortcuts_path}")
     else:
         print(f"Shortcuts config already exists: {shortcuts_path}")
 
     if not rules_path.exists():
-        with open(rules_path, 'w', encoding='utf-8') as f:
+        with open(rules_path, "w", encoding="utf-8") as f:
             f.write(rules_default)
         print(f"Created default rules config: {rules_path}")
     else:
         print(f"Rules config already exists: {rules_path}")
 
     return True
+
 
 def main():
     """Main doctor command."""
@@ -207,7 +231,7 @@ def main():
     missing_configs = any(not passed for name, passed, info in config_results)
     if missing_configs:
         response = input("\nWould you like to create default configuration files? (y/N): ")
-        if response.lower() in ['y', 'yes']:
+        if response.lower() in ["y", "yes"]:
             create_default_configs(config_dir)
 
     # Final summary

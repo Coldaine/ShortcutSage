@@ -81,8 +81,7 @@ def run_demo():
 
     # Setup logging
     logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
 
     # Create demo configuration
@@ -107,39 +106,43 @@ def run_demo():
             "timestamp": datetime.now().isoformat(),
             "type": "desktop_state",
             "action": "show_desktop",
-            "metadata": {"window": "unknown", "desktop": 1}
+            "metadata": {"window": "unknown", "desktop": 1},
         },
         {
             "timestamp": (datetime.now()).isoformat(),
             "type": "window_state",
             "action": "tile_left",
-            "metadata": {"window": "Terminal", "maximized": False}
+            "metadata": {"window": "Terminal", "maximized": False},
         },
         {
             "timestamp": (datetime.now()).isoformat(),
             "type": "window_focus",
             "action": "window_focus",
-            "metadata": {"window": "Browser", "app": "firefox"}
-        }
+            "metadata": {"window": "Browser", "app": "firefox"},
+        },
     ]
 
     # Send events and update overlay
     for i, event in enumerate(events):
-        print(f"\nEvent {i+1}: {event['action']}")
+        print(f"\nEvent {i + 1}: {event['action']}")
         event_json = json.dumps(event)
 
         # Define callback to update overlay with suggestions
         def create_callback():
             def callback(suggestions):
                 # Update overlay with suggestions
-                overlay.set_suggestions_fallback([
-                    {
-                        "action": s.action,
-                        "key": s.key,
-                        "description": s.description,
-                        "priority": s.priority
-                    } for s in suggestions
-                ])
+                overlay.set_suggestions_fallback(
+                    [
+                        {
+                            "action": s.action,
+                            "key": s.key,
+                            "description": s.description,
+                            "priority": s.priority,
+                        }
+                        for s in suggestions
+                    ]
+                )
+
             return callback
 
         daemon.set_suggestions_callback(create_callback())

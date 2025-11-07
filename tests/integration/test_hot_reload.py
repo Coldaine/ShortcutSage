@@ -40,9 +40,7 @@ class TestConfigWatcher:
         # After context exit, observer should be stopped
         assert watcher.observer is None
 
-    def test_callback_triggered_on_file_modification(
-        self, tmp_config_dir: Path
-    ) -> None:
+    def test_callback_triggered_on_file_modification(self, tmp_config_dir: Path) -> None:
         """Test that callback is triggered when config file is modified."""
         modified_file = None
         callback_called = Event()
