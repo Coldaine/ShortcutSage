@@ -88,7 +88,9 @@ class _ConfigHandler(FileSystemEventHandler):
             return
 
         # Convert src_path to string if it's bytes
-        src_path_str = event.src_path if isinstance(event.src_path, str) else event.src_path.decode("utf-8")
+        src_path_str = (
+            event.src_path if isinstance(event.src_path, str) else event.src_path.decode("utf-8")
+        )
 
         # Only watch YAML files
         if not src_path_str.endswith((".yaml", ".yml")):

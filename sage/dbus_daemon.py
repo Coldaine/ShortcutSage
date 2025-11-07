@@ -35,7 +35,13 @@ except ImportError:
 class Daemon:
     """DBus service for Shortcut Sage daemon (with fallback implementation)."""
 
-    def __init__(self, config_dir: str, enable_dbus: bool = True, log_events: bool = True, log_dir: str | Path | None = None) -> None:
+    def __init__(
+        self,
+        config_dir: str,
+        enable_dbus: bool = True,
+        log_events: bool = True,
+        log_dir: str | Path | None = None,
+    ) -> None:
         """Initialize the daemon."""
         self.enable_dbus = enable_dbus and DBUS_AVAILABLE
         self.log_events = log_events  # Whether to log events and suggestions

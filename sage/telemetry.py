@@ -42,7 +42,9 @@ class MetricsCollector:
         self._lock = threading.Lock()
         self.counters: dict[str, int] = defaultdict(int)
         self.histograms: dict[str, list[float]] = defaultdict(list)
-        self.events: deque[TelemetryEvent] = deque(maxlen=10000)  # Circular buffer for recent events
+        self.events: deque[TelemetryEvent] = deque(
+            maxlen=10000
+        )  # Circular buffer for recent events
         self.start_time = datetime.now()
 
     def increment_counter(self, name: str, value: int = 1) -> None:
