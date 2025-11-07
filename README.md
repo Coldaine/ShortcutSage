@@ -59,6 +59,28 @@ bash scripts/install-kwin-script.sh
 
 Create your config files in `~/.config/shortcut-sage/`:
 
+**config.toml**: Global settings (optional, uses defaults if not present)
+```toml
+[privacy]
+# Enable window title capture for better context-aware suggestions
+# Recommended: true for best results, false if privacy is a concern
+capture_window_titles = false
+
+# Optionally redact titles from logs (reduces audit trail quality)
+redact_titles_from_logs = true
+
+[engine]
+buffer_size_seconds = 3
+default_cooldown_seconds = 300
+max_suggestions = 3
+
+[overlay]
+position = "top-left"
+opacity = 0.9
+```
+
+See [config.toml](config.toml) for all available options.
+
 **shortcuts.yaml**: Define your shortcuts
 ```yaml
 version: "1.0"
@@ -152,8 +174,11 @@ See [implementation-plan.md](implementation-plan.md) for full roadmap.
 
 - **No keylogging**: Only symbolic events (window focus, desktop switch)
 - **Local processing**: No cloud, no telemetry
-- **Redacted by default**: Window titles not logged
+- **Flexible data capture**: Window titles configurable via config.toml for improved suggestions
+- **Optional redaction**: Separate control for logging vs. suggestion logic (if privacy preferred)
 - **Open source**: Audit the code yourself
+
+> **Note**: For best results, enable `capture_window_titles = true` in config.toml. This allows more targeted, context-aware suggestions. Privacy controls are available but may reduce suggestion quality.
 
 ## Contributing
 

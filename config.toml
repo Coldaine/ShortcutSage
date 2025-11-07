@@ -1,0 +1,63 @@
+# Shortcut Sage Configuration
+# Place this file in your config directory (default: ~/.config/shortcut-sage/)
+
+[general]
+# Enable debug logging (verbose output)
+debug = false
+
+[privacy]
+# Capture and use window titles (captions) in suggestion logic
+# - true: Full window titles sent to daemon (e.g., "Mozilla Firefox - Stack Overflow")
+#         RECOMMENDED for better, more context-aware suggestions
+# - false: Only application resource class sent (e.g., "firefox")
+#          Limits suggestion accuracy for privacy
+#
+# Window titles enable more targeted suggestions based on:
+# - Document names (suggest Kate shortcuts when editing *.py files)
+# - Web page context (suggest browser shortcuts on specific sites)
+# - More nuanced workflow understanding
+capture_window_titles = false
+
+# Redact window titles from persistent logs (even if capture_window_titles = true)
+# Set to false if you want full audit trails for debugging/improvement
+redact_titles_from_logs = true
+
+[engine]
+# Ring buffer size in seconds (how far back to look for patterns)
+buffer_size_seconds = 3
+
+# Default cooldown in seconds (can be overridden per-rule in rules.yaml)
+default_cooldown_seconds = 300
+
+# Maximum number of suggestions to show simultaneously
+max_suggestions = 3
+
+[overlay]
+# Show the suggestion overlay
+enabled = true
+
+# Overlay position (top-left, top-right, bottom-left, bottom-right)
+position = "top-left"
+
+# Overlay offset from screen edge in pixels
+offset_x = 20
+offset_y = 20
+
+# Auto-hide overlay after N seconds (0 = never auto-hide)
+auto_hide_seconds = 0
+
+# Overlay transparency (0.0 = invisible, 1.0 = opaque)
+opacity = 0.9
+
+[logging]
+# Log format: "json" or "ndjson"
+format = "ndjson"
+
+# Log rotation: maximum file size in MB before rotation
+max_log_size_mb = 10
+
+# Number of rotated log files to keep
+max_log_files = 5
+
+# Log level: "debug", "info", "warning", "error"
+level = "info"

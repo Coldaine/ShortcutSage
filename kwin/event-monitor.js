@@ -5,13 +5,15 @@
  *
  * Events monitored:
  * - Desktop/workspace switches
- * - Window focus changes
+ * - Window focus changes (including window titles for better context)
  * - Show desktop state changes
  *
  * Dev shortcut: Meta+Shift+S sends a test event
  *
- * Privacy: Window titles are NOT captured by default - only resource classes
- * (application IDs) are sent to maintain user privacy.
+ * Window titles are sent to improve suggestion accuracy. The daemon's
+ * config.toml controls whether titles are used for suggestions and/or
+ * logged. Configure privacy.capture_window_titles to balance accuracy
+ * vs. privacy based on your preferences.
  */
 
 // DBus connection to Shortcut Sage daemon
@@ -138,7 +140,7 @@ workspace.clientActivated.connect(function(client) {
             "window_focus",
             "window_activated",
             {
-                // caption: client.caption,  // Uncomment to include window titles (privacy trade-off)
+                caption: client.caption,
                 resourceClass: client.resourceClass || "unknown"
             }
         );
