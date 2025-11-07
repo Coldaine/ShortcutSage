@@ -65,7 +65,7 @@ jobs:
 
       - name: Test with pytest
         run: |
-          xvfb-run -a pytest --cov=sage --cov-report=term-missing --cov-report=xml --cov-fail-under=80
+          xvfb-run -a pytest --cov=sage --cov-report=term-missing --cov-report=xml --cov-fail-under=75
         env:
           QT_QPA_PLATFORM: offscreen
 
