@@ -1,7 +1,6 @@
 """Developer hints and debugging panel for Shortcut Sage."""
 
 import sys
-from typing import Union
 
 from PySide6.QtCore import QCoreApplication, Qt, QTimer
 from PySide6.QtGui import QFont
@@ -173,7 +172,7 @@ Last 10 Events: {len(self.telemetry.metrics.events)}"""
         self.suggestions_trace.clear()
 
 
-def show_dev_hints() -> tuple[Union[QCoreApplication, QApplication], DevHintsPanel]:
+def show_dev_hints() -> tuple[QCoreApplication | QApplication, DevHintsPanel]:
     """Show the developer hints panel."""
     app = QApplication.instance()
     if app is None:

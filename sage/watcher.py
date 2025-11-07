@@ -9,7 +9,7 @@ from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
 if TYPE_CHECKING:
-    import watchdog.observers
+    pass
 
 logger = logging.getLogger(__name__)
 
