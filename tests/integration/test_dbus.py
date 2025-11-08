@@ -1,10 +1,12 @@
 """Integration tests for DBus IPC."""
 
+from __future__ import annotations
+
 import json
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
@@ -20,6 +22,9 @@ if DBUS_AVAILABLE:
     from gi.repository import GLib  # type: ignore[import-not-found]
 
     from sage.dbus_client import DBusClient
+    from sage.dbus_daemon import Daemon
+
+if TYPE_CHECKING:
     from sage.dbus_daemon import Daemon
 
 
