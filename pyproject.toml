@@ -37,6 +37,7 @@ dev = [
     "pytest-cov>=4.1",
     "pytest-asyncio>=0.21",
     "pytest-qt>=4.2",
+    "python-dbusmock>=0.30",
     "ruff>=0.1",
     "mypy>=1.7",
     "types-PyYAML",

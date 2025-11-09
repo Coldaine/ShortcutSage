@@ -150,7 +150,7 @@ ShortcutSage/
 ├── tests/
 │   ├── unit/ (44 tests)
 │   ├── integration/ (15 tests)
-│   └── e2e/ (0 tests - TODO)
+│   └── e2e/ (1 test - overlay signal smoke)
 ├── implementation-plan.md
 ├── shortcut-sage-bible.md
 └── README.md
@@ -190,7 +190,7 @@ ShortcutSage/
 - PySide6 overlay window implemented
 - SuggestionChip widgets created
 - DBus signal listener integrated
-- Needs E2E integration testing
+- E2E smoke test in CI (`tests/e2e/test_overlay_signal.py`), manual artifacts pending
 
 ---
 

@@ -79,6 +79,34 @@ class DBusClient:
             signal_name="Suggestions",
         )
 
+    def get_buffer_state(self) -> list[dict[str, Any]]:
+        """Return the daemon's current buffer state."""
+        raw_state = self.interface.GetBufferState()
+        normalized: list[dict[str, Any]] = []
+        for row in raw_state:
+            normalized.append({str(key): self._to_python(value) for key, value in row.items()})
+        return normalized
+
+    @staticmethod
+    def _to_python(value: Any) -> Any:
+        """Convert DBus-specific types to plain Python objects."""
+        if not DBUS_AVAILABLE:
+            return value
+
+        if isinstance(value, dbus.Dictionary):
+            return {str(k): DBusClient._to_python(v) for k, v in value.items()}
+        if isinstance(value, dbus.Array):
+            return [DBusClient._to_python(v) for v in value]
+        if isinstance(value, (dbus.String, dbus.ObjectPath)):
+            return str(value)
+        if isinstance(value, (dbus.Int32, dbus.UInt32, dbus.Int64, dbus.UInt64)):
+            return int(value)
+        if isinstance(value, dbus.Double):
+            return float(value)
+        if isinstance(value, dbus.Boolean):
+            return bool(value)
+        return value
+
     @staticmethod
     def is_daemon_running() -> bool:
         """Check if the daemon is running.

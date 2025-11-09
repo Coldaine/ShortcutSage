@@ -87,15 +87,25 @@ rules:
 ## Usage
 
 ```bash
-# Start the daemon
-shortcut-sage daemon
+# Start the daemon with your config directory
+shortcut-sage daemon --config ~/.config/shortcut-sage
 
-# Start the overlay (in another terminal)
+# Or use the repo sample config for quick demos
+shortcut-sage daemon --config ./config
+
+# Launch the overlay UI (separate terminal)
 shortcut-sage overlay
 
-# Test event (Meta+Shift+S in KDE)
-# Should trigger test event
+# Need a standalone visual check? Use demo mode
+shortcut-sage overlay --demo
 ```
+
+### Overlay UI
+
+- Always-on-top PySide6 window that renders up to 3 suggestion “chips”
+- Positioned in the top-left corner with translucent background and fade animations
+- Listens for DBus `Suggestions` signals from the daemon; `--demo` fills placeholder data without DBus
+- Honors `Qt.WindowDoesNotAcceptFocus` so it never steals focus while you work
 
 ## Development
 
@@ -133,11 +143,11 @@ mypy sage
 Currently implementing **MVP (PR-00 through PR-06)**:
 
 - ✅ PR-00: Repository & CI Bootstrap
-- 🚧 PR-01: Config & Schemas
-- ⏳ PR-02: Engine Core
-- ⏳ PR-03: DBus IPC
-- ⏳ PR-04: KWin Event Monitor
-- ⏳ PR-05: Overlay UI
+- ✅ PR-01: Config & Schemas
+- ✅ PR-02: Engine Core
+- ✅ PR-03: DBus IPC
+- ✅ PR-04: KWin Event Monitor
+- 🚧 PR-05: Overlay UI
 - ⏳ PR-06: End-to-End Demo
 
 See [implementation-plan.md](implementation-plan.md) for full roadmap.

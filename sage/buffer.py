@@ -68,3 +68,8 @@ class RingBuffer:
     def __len__(self) -> int:
         """Get number of events in buffer."""
         return len(self._events)
+
+    @property
+    def events(self) -> list[Event]:
+        """Backward-compatible accessor for tests/diagnostics."""
+        return self.recent()

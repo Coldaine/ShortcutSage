@@ -8,22 +8,22 @@ Finalize the Overlay UI MVP so PR-05 can be opened immediately after PR-04. This
 
 ## Deliverables
 - ✅ PySide6 overlay window (`sage/overlay.py`) – frameless, top-left, max 3 chips
-- ⏳ CLI entry points (`shortcut-sage daemon|overlay`) with argparse and help text
+- ✅ CLI entry points (`shortcut-sage daemon|overlay`) with argparse and help text
 - ✅ Unit coverage (`tests/unit/test_overlay.py`)
 - ⏳ Manual testing evidence (screenshots/checklist)
-- ⏳ README/docs updates describing overlay behavior & test plan
-- ⏳ E2E signal smoke (DBus Suggestions → overlay paint) – lightweight harness acceptable
+- ✅ README/docs updates describing overlay behavior & test plan
+- ✅ E2E signal smoke (DBus Suggestions → overlay paint) – lightweight harness acceptable
 
 ## Task Breakdown
 
 | Task | Details | Status |
 | --- | --- | --- |
 | Overlay code sanity pass | Re-read `sage/overlay.py`, confirm logging, fallback path | ✅ Done 2025-11-08 |
-| CLI plumbing | Extend `sage/__main__.py` (argparse) + expose overlay entry point | ⏳ |
-| CLI docs | Expand README usage + overlay section | ⏳ |
+| CLI plumbing | Extend `sage/__main__.py` (argparse) + expose overlay entry point | ✅ Done 2025-11-08 |
+| CLI docs | Expand README usage + overlay section | ✅ Done 2025-11-08 |
 | Manual test checklist | Define reproducible steps + expected results | ⏳ (documented below; needs execution evidence) |
 | Screenshot / artifact | Capture overlay rendering on KDE | ⏳ |
-| E2E signal test | Add `tests/e2e/test_overlay_signal.py` to verify DBus listener → UI | ⏳ |
+| E2E signal test | Add `tests/e2e/test_overlay_signal.py` to verify DBus listener → UI | ✅ Done 2025-11-08 |
 | PR narrative | Prep `PR-05` template, include Known Issues & security note | ⏳ |
 
 ## Manual Testing Checklist (to execute on KDE Plasma 5.27+)

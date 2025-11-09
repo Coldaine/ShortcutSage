@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import json
+import multiprocessing
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import pytest
 
@@ -15,17 +16,14 @@ from sage.dbus_client import DBUS_AVAILABLE
 # Skip all tests if DBus is not available
 pytestmark = pytest.mark.skipif(not DBUS_AVAILABLE, reason="DBus not available")
 
+pytest_plugins = ["dbusmock.pytest_fixtures"]
 
 if DBUS_AVAILABLE:
     import dbus
-    from dbus.mainloop.glib import DBusGMainLoop
     from gi.repository import GLib  # type: ignore[import-not-found]
 
     from sage.dbus_client import DBusClient
-    from sage.dbus_daemon import Daemon
-
-if TYPE_CHECKING:
-    from sage.dbus_daemon import Daemon
+    from sage.dbus_daemon import run_daemon
 
 
 @pytest.fixture
@@ -70,41 +68,60 @@ rules:
     return config_dir
 
 
-@pytest.fixture
-def daemon_process(temp_config_dir: Path) -> Daemon:
-    """Start a daemon process for testing."""
-    # Initialize DBus main loop
-    DBusGMainLoop(set_as_default=True)
+def _wait_for_daemon(timeout: float = 5.0) -> None:
+    """Wait until the DBus service is reachable."""
+    deadline = time.time() + timeout
+    last_error: Exception | None = None
+    while time.time() < deadline:
+        try:
+            client = DBusClient()
+            client.ping()
+            return
+        except Exception as exc:  # pragma: no cover - diagnostics only
+            last_error = exc
+            time.sleep(0.1)
+    raise RuntimeError(f"Daemon failed to start: {last_error}")
 
-    # Create daemon with test configuration
+
+@pytest.fixture
+def daemon_process(temp_config_dir: Path, dbusmock_session):
+    """Start the daemon in a separate process against an isolated bus."""
     log_dir = temp_config_dir.parent / "logs"
-    daemon = Daemon(str(temp_config_dir), enable_dbus=True, log_dir=log_dir)
+    process = multiprocessing.Process(
+        target=run_daemon,
+        args=(str(temp_config_dir),),
+        kwargs={"log_dir": str(log_dir)},
+    )
+    process.start()
 
-    # Start the daemon in a background thread
-    daemon.start()
+    try:
+        _wait_for_daemon()
+    except Exception:
+        process.terminate()
+        process.join(timeout=5)
+        raise
 
-    # Give daemon time to initialize
-    time.sleep(0.5)
+    yield process
 
-    yield daemon
-
-    # Cleanup
-    daemon.stop()
+    process.terminate()
+    process.join(timeout=5)
+    if process.is_alive():
+        process.kill()
 
 
 @pytest.fixture
-def dbus_client() -> DBusClient:
+def dbus_client(daemon_process) -> DBusClient:  # noqa: PT004 - fixture ensures daemon running
     """Create a DBus client for testing."""
     return DBusClient()
 
 
-def test_ping(daemon_process: Daemon, dbus_client: DBusClient) -> None:
+def test_ping(daemon_process, dbus_client: DBusClient) -> None:  # noqa: ARG001
     """Test the Ping method."""
     result = dbus_client.ping()
     assert result == "pong"
 
 
-def test_send_event_valid_json(daemon_process: Daemon, dbus_client: DBusClient) -> None:
+def test_send_event_valid_json(daemon_process, dbus_client: DBusClient) -> None:  # noqa: ARG001
     """Test SendEvent with valid JSON."""
     event_data = {
         "timestamp": datetime.now().isoformat(),
@@ -120,11 +137,12 @@ def test_send_event_valid_json(daemon_process: Daemon, dbus_client: DBusClient) 
     time.sleep(0.1)
 
     # Verify event was added to buffer
-    assert len(daemon_process.buffer.events) == 1
-    assert daemon_process.buffer.events[0].action == "show_desktop"
+    buffer = dbus_client.get_buffer_state()
+    assert len(buffer) == 1
+    assert buffer[0]["action"] == "show_desktop"
 
 
-def test_send_event_valid_json_string(daemon_process: Daemon, dbus_client: DBusClient) -> None:
+def test_send_event_valid_json_string(daemon_process, dbus_client: DBusClient) -> None:  # noqa: ARG001
     """Test SendEvent with valid JSON string."""
     event_json = json.dumps(
         {
@@ -141,12 +159,12 @@ def test_send_event_valid_json_string(daemon_process: Daemon, dbus_client: DBusC
     # Give daemon time to process
     time.sleep(0.1)
 
-    # Verify event was added to buffer
-    assert len(daemon_process.buffer.events) == 1
-    assert daemon_process.buffer.events[0].action == "tile_left"
+    buffer = dbus_client.get_buffer_state()
+    assert len(buffer) == 1
+    assert buffer[0]["action"] == "tile_left"
 
 
-def test_send_event_malformed_json(daemon_process: Daemon, dbus_client: DBusClient) -> None:
+def test_send_event_malformed_json(daemon_process, dbus_client: DBusClient) -> None:  # noqa: ARG001
     """Test SendEvent with malformed JSON."""
     # Send malformed JSON - should not crash but should log error
     dbus_client.send_event("{invalid json}")
@@ -154,11 +172,10 @@ def test_send_event_malformed_json(daemon_process: Daemon, dbus_client: DBusClie
     # Give daemon time to process
     time.sleep(0.1)
 
-    # Buffer should be empty (event was rejected)
-    assert len(daemon_process.buffer.events) == 0
+    assert dbus_client.get_buffer_state() == []
 
 
-def test_send_event_missing_fields(daemon_process: Daemon, dbus_client: DBusClient) -> None:
+def test_send_event_missing_fields(daemon_process, dbus_client: DBusClient) -> None:  # noqa: ARG001
     """Test SendEvent with missing required fields."""
     # Missing 'action' field
     event_data = {
@@ -173,11 +190,10 @@ def test_send_event_missing_fields(daemon_process: Daemon, dbus_client: DBusClie
     # Give daemon time to process
     time.sleep(0.1)
 
-    # Buffer should be empty (event was rejected)
-    assert len(daemon_process.buffer.events) == 0
+    assert dbus_client.get_buffer_state() == []
 
 
-def test_suggestions_signal(daemon_process: Daemon, dbus_client: DBusClient) -> None:
+def test_suggestions_signal(daemon_process, dbus_client: DBusClient) -> None:  # noqa: ARG001
     """Test Suggestions signal emission."""
     received_suggestions: list[Any] = []
 
@@ -209,7 +225,7 @@ def test_suggestions_signal(daemon_process: Daemon, dbus_client: DBusClient) -> 
     assert any(s["action"] == "overview" for s in received_suggestions)
 
 
-def test_multiple_events_sequence(daemon_process: Daemon, dbus_client: DBusClient) -> None:
+def test_multiple_events_sequence(daemon_process, dbus_client: DBusClient) -> None:  # noqa: ARG001
     """Test sending multiple events in sequence."""
     events = [
         {
@@ -237,7 +253,8 @@ def test_multiple_events_sequence(daemon_process: Daemon, dbus_client: DBusClien
         time.sleep(0.05)
 
     # Verify all events were processed
-    assert len(daemon_process.buffer.events) == 3
+    buffer = dbus_client.get_buffer_state()
+    assert len(buffer) == 3
 
 
 def test_daemon_is_running() -> None:
@@ -249,9 +266,10 @@ def test_daemon_is_running() -> None:
     assert isinstance(result, bool)
 
 
-def test_dbus_error_handling(temp_config_dir: Path) -> None:
-    """Test error handling when daemon is not running."""
-    # Don't start daemon
-    with pytest.raises((dbus.DBusException, dbus.exceptions.DBusException)):  # type: ignore[attr-defined]
+def test_dbus_error_handling(dbusmock_session) -> None:
+    """Ensure client errors cleanly when daemon is not available."""
+    with pytest.raises(dbus.DBusException) as exc_info:
         client = DBusClient()
         client.ping()
+
+    assert "org.freedesktop.DBus.Error.NameHasNoOwner" in str(exc_info.value)

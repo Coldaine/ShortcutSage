@@ -1,9 +1,12 @@
 """DBus daemon for Shortcut Sage (with fallback for systems without DBus)."""
 
+from __future__ import annotations
+
 import json
 import logging
 import signal
 import sys
+import threading
 import time
 from collections.abc import Callable
 from pathlib import Path
@@ -22,9 +25,10 @@ logger = logging.getLogger(__name__)
 try:
     import dbus
     import dbus.service
-    from dbus.mainloop.glib import DBusGMainLoop
+    from dbus.mainloop.glib import DBusGMainLoop, threads_init
     from gi.repository import GLib  # type: ignore[import-not-found]
 
+    threads_init()
     DBUS_AVAILABLE = True
     logger.info("DBus support available")
 except ImportError:
@@ -76,6 +80,9 @@ class Daemon:
 
         # Store callback for suggestions (to be set by caller if not using DBus)
         self.suggestions_callback: Callable[[list[SuggestionResult]], None] | None = None
+        self._dbus_loop: GLib.MainLoop | None = None
+        self._dbus_thread: threading.Thread | None = None
+        self._dbus_service: dbus.service.Object | None = None
 
         if self.enable_dbus:
             self._init_dbus_service()
@@ -93,10 +100,21 @@ class Daemon:
         # Define the D-Bus service name and object path
         self.BUS_NAME = "org.shortcutsage.Daemon"
         self.OBJECT_PATH = "/org/shortcutsage/Daemon"
+        logger.debug("DBus service metadata initialized")
 
-        # Create the DBus service object
-        bus_name = dbus.service.BusName(self.BUS_NAME, bus=dbus.SessionBus())
-        dbus.service.Object.__init__(self, bus_name, self.OBJECT_PATH)
+    def _buffer_snapshot(self) -> list[dict[str, Any]]:
+        """Return the ring buffer contents as JSON-serializable dictionaries."""
+        snapshot: list[dict[str, Any]] = []
+        for event in self.buffer.recent():
+            snapshot.append(
+                {
+                    "action": event.action,
+                    "type": event.type,
+                    "timestamp": event.timestamp.isoformat(),
+                    "metadata": dict(event.metadata or {}),
+                }
+            )
+        return snapshot
 
     def _setup_config_reload(self) -> None:
         """Set up configuration reload callback."""
@@ -117,7 +135,7 @@ class Daemon:
 
         self.watcher = ConfigWatcher(self.config_loader.config_dir, reload_config)
 
-    def send_event(self, event_json: str) -> None:
+    def send_event(self, event_json: str) -> str:
         """Receive and process an event from KWin or other sources."""
         start_time = time.time()
 
@@ -194,9 +212,11 @@ class Daemon:
                 )
 
             # Emit the suggestions
-            self.emit_suggestions(suggestions)
+            suggestions_json = self.emit_suggestions(suggestions)
 
             logger.debug(f"Processed event: {event.action}")
+
+            return suggestions_json
 
         except Exception as e:
             logger.error(f"Error processing event: {e}")
@@ -210,6 +230,7 @@ class Daemon:
                 duration=time.time() - start_time,
                 properties={"error": str(e), "error_type": type(e).__name__},
             )
+            raise
 
     def ping(self) -> str:
         """Simple ping method to check if daemon is alive."""
@@ -245,101 +266,158 @@ class Daemon:
         """Start the daemon."""
         self.watcher.start()
         if self.enable_dbus:
+            self._start_dbus_loop()
             logger.info(f"Daemon started on {self.BUS_NAME}")
         else:
             logger.info("Daemon started (fallback mode)")
 
     def stop(self) -> None:
         """Stop the daemon."""
+        if self.enable_dbus and self._dbus_loop is not None:
+            self._dbus_loop.quit()
+            if self._dbus_thread:
+                self._dbus_thread.join(timeout=5.0)
+            self._dbus_loop = None
+            self._dbus_thread = None
+            self._dbus_service = None
         self.watcher.stop()
         logger.info("Daemon stopped")
 
+    def _start_dbus_loop(self) -> None:
+        """Start the GLib main loop in a background thread for DBus."""
+        if not self.enable_dbus:
+            return
 
-def main() -> None:
-    """Main entry point."""
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    )
+        if self._dbus_thread is not None:
+            return
 
-    if len(sys.argv) not in [2, 3]:
-        print("Usage: shortcut-sage <config_dir> [log_dir]")
-        sys.exit(1)
+        ready = threading.Event()
+        daemon = self
 
-    config_dir = sys.argv[1]
-    log_dir = sys.argv[2] if len(sys.argv) > 2 else None
+        def _loop() -> None:
+            try:
+                DBusGMainLoop(set_as_default=True)
 
-    # Create the daemon
-    daemon = Daemon(config_dir, enable_dbus=DBUS_AVAILABLE, log_dir=log_dir)
+                class DBusService(dbus.service.Object):  # type: ignore[misc]
+                    """DBus wrapper exposing daemon methods and signals."""
 
-    # Set up signal handlers for graceful shutdown
-    def signal_handler(signum: int, frame: Any) -> None:
-        print(f"Received signal {signum}, shutting down...")
-        # Log daemon stop
-        from sage.telemetry import EventType, log_event
+                    def __init__(self) -> None:
+                        bus_name = dbus.service.BusName(daemon.BUS_NAME, bus=dbus.SessionBus())
+                        super().__init__(bus_name, daemon.OBJECT_PATH)
 
+                    @dbus.service.method(  # type: ignore[misc]
+                        "org.shortcutsage.Daemon",
+                        in_signature="s",
+                        out_signature="",
+                    )
+                    def SendEvent(self, event_json: str) -> None:  # noqa: N802 - DBus convention
+                        """DBus method to send an event."""
+                        logger.info("DBus SendEvent invoked")
+                        suggestions_json = daemon.send_event(event_json)
+                        if suggestions_json:
+                            self.Suggestions(suggestions_json)
+
+                    @dbus.service.method(  # type: ignore[misc]
+                        "org.shortcutsage.Daemon",
+                        in_signature="",
+                        out_signature="s",
+                    )
+                    def Ping(self) -> str:  # noqa: N802 - DBus convention
+                        """DBus method to ping."""
+                        logger.info("DBus Ping invoked")
+                        result = daemon.ping()
+                        logger.info("DBus Ping returning %s", result)
+                        return dbus.String(result)
+
+                    @dbus.service.signal(  # type: ignore[misc]
+                        "org.shortcutsage.Daemon",
+                        signature="s",
+                    )
+                    def Suggestions(self, suggestions_json: str) -> None:  # noqa: N802 - DBus convention
+                        """Suggestions signal fired after each processed event."""
+                        return None
+
+                    @dbus.service.method(  # type: ignore[misc]
+                        "org.shortcutsage.Daemon",
+                        in_signature="",
+                        out_signature="aa{sv}",
+                    )
+                    def GetBufferState(self) -> dbus.Array:  # noqa: N802 - DBus convention
+                        """Return the current buffer contents for debugging/tests."""
+                        payload = dbus.Array(signature="a{sv}")
+                        for event_dict in daemon._buffer_snapshot():
+                            entry = dbus.Dictionary(signature="sv")
+                            for key, value in event_dict.items():
+                                if isinstance(value, dict):
+                                    entry[key] = dbus.Dictionary(value, signature="sv")
+                                else:
+                                    entry[key] = value
+                            payload.append(entry)
+                        return payload
+
+                self._dbus_service = DBusService()
+                self._dbus_loop = GLib.MainLoop()
+                ready.set()
+                self._dbus_loop.run()
+            except Exception as exc:
+                logger.exception("DBus loop crashed: %s", exc)
+                ready.set()
+                raise
+
+        self._dbus_thread = threading.Thread(target=_loop, daemon=True)
+        self._dbus_thread.start()
+        ready.wait(timeout=2.0)
+
+
+def run_daemon(
+    config_dir: str,
+    log_dir: str | None = None,
+    *,
+    enable_dbus: bool | None = None,
+    log_events: bool = True,
+) -> None:
+    """Run the daemon with the provided configuration."""
+    root_logger = logging.getLogger()
+    if not root_logger.handlers:
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        )
+
+    effective_dbus = DBUS_AVAILABLE if enable_dbus is None else enable_dbus
+
+    daemon = Daemon(config_dir, enable_dbus=effective_dbus, log_events=log_events, log_dir=log_dir)
+
+    def _signal_handler(signum: int, frame: Any) -> None:
+        logger.info("Received signal %s, shutting down daemon", signum)
         log_event(EventType.DAEMON_STOP, properties={"signal": signum})
         daemon.stop()
         sys.exit(0)
 
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGINT, _signal_handler)
+    signal.signal(signal.SIGTERM, _signal_handler)
 
-    # Start the daemon
     daemon.start()
 
-    # If DBus is available, run the main loop with DBus methods
-    if daemon.enable_dbus:
-        # Define the DBus service methods dynamically
-        class DBusService(dbus.service.Object):  # type: ignore[misc]
-            def __init__(self, daemon_instance: Daemon) -> None:
-                self._daemon = daemon_instance
-                bus_name = dbus.service.BusName(self._daemon.BUS_NAME, bus=dbus.SessionBus())
-                dbus.service.Object.__init__(self, bus_name, self._daemon.OBJECT_PATH)
+    logger.info(
+        "Daemon running (%s). Press Ctrl+C to stop.",
+        "DBus" if daemon.enable_dbus else "fallback",
+    )
+    try:
+        while True:
+            time.sleep(1.0)
+    except KeyboardInterrupt:
+        logger.info("Interrupted, shutting down daemon")
+        log_event(EventType.DAEMON_STOP, properties={"signal": "SIGINT"})
+        daemon.stop()
 
-            @dbus.service.method(  # type: ignore[misc]
-                "org.shortcutsage.Daemon",
-                in_signature="s",
-                out_signature="",
-            )
-            def SendEvent(self, event_json: str) -> None:  # noqa: N802 - DBus API requires capitalized method names
-                """DBus method to send an event."""
-                self._daemon.send_event(event_json)
 
-            @dbus.service.method(  # type: ignore[misc]
-                "org.shortcutsage.Daemon",
-                in_signature="",
-                out_signature="s",
-            )
-            def Ping(self) -> str:  # noqa: N802 - DBus API requires capitalized method names
-                """DBus method to ping."""
-                return self._daemon.ping()
+def main() -> None:
+    """Legacy CLI entry point for direct module execution."""
+    if len(sys.argv) not in [2, 3]:
+        print("Usage: python -m sage.dbus_daemon <config_dir> [log_dir]")
+        sys.exit(1)
 
-            @dbus.service.signal(  # type: ignore[misc]
-                "org.shortcutsage.Daemon",
-                signature="s",
-            )
-            def Suggestions(self, suggestions_json: str) -> None:  # noqa: N802 - DBus API requires capitalized method names
-                """DBus signal for suggestions."""
-                pass
-
-        # Create the DBus service with daemon instance
-        # Keep reference to prevent garbage collection
-        dbus_service = DBusService(daemon)  # noqa: F841 - Must keep in scope for DBus service to remain active
-
-        try:
-            loop = GLib.MainLoop()
-            loop.run()
-        except KeyboardInterrupt:
-            print("Interrupted, shutting down...")
-            # Log daemon stop
-            from sage.telemetry import EventType, log_event
-
-            log_event(EventType.DAEMON_STOP, properties={"signal": "SIGINT"})
-            daemon.stop()
-    else:
-        # In fallback mode, just keep the process alive
-        print("Running in fallback mode (no DBus). Process will exit immediately.")
-        print(
-            "In a real implementation, you might want to set up a different IPC mechanism or event loop."
-        )
+    config_dir = sys.argv[1]
+    log_dir = sys.argv[2] if len(sys.argv) > 2 else None
+    run_daemon(config_dir, log_dir)

@@ -1,5 +1,7 @@
 """PySide6 overlay for Shortcut Sage suggestions."""
 
+from __future__ import annotations
+
 import json
 import logging
 import sys
@@ -198,40 +200,41 @@ class OverlayWindow(QWidget):
         self.fade_animation.setEndValue(0.0)
         self.fade_animation.setEasingCurve(QEasingCurve.Type.InOutCubic)
         self.fade_animation.finished.connect(self.hide)
-        self.fade_animation.start()
+DEMO_SUGGESTIONS = [
+    {
+        "action": "overview",
+        "key": "Meta+Tab",
+        "description": "Show application overview",
+        "priority": 80,
+    },
+    {
+        "action": "tile_left",
+        "key": "Meta+Left",
+        "description": "Tile window to left half",
+        "priority": 60,
+    },
+]
+
+
+def run_overlay(*, enable_dbus: bool = True, demo: bool = False) -> int:
+    """Launch the overlay UI."""
+    app = QApplication.instance() or QApplication([sys.argv[0]])
+    app.setApplicationName("ShortcutSageOverlay")
+    app.setQuitOnLastWindowClosed(False)
+
+    overlay = OverlayWindow(dbus_available=enable_dbus)
+    overlay.show()
+
+    if demo:
+        overlay.set_suggestions_fallback(DEMO_SUGGESTIONS)
+
+    return app.exec()
 
 
 def main() -> None:
-    """Main entry point for the overlay."""
-    app = QApplication(sys.argv)
-
-    # Set application attributes
-    app.setApplicationName("ShortcutSageOverlay")
-    app.setQuitOnLastWindowClosed(False)  # Don't quit when overlay is closed
-
-    # Create overlay
-    overlay = OverlayWindow(dbus_available=True)
-    overlay.show()
-
-    # Add some test suggestions if running standalone for demo
-    if len(sys.argv) > 1 and sys.argv[1] == "--demo":
-        test_suggestions = [
-            {
-                "action": "overview",
-                "key": "Meta+Tab",
-                "description": "Show application overview",
-                "priority": 80,
-            },
-            {
-                "action": "tile_left",
-                "key": "Meta+Left",
-                "description": "Tile window to left half",
-                "priority": 60,
-            },
-        ]
-        overlay.set_suggestions_fallback(test_suggestions)
-
-    sys.exit(app.exec())
+    """Legacy CLI entry point for running directly."""
+    demo = "--demo" in sys.argv
+    sys.exit(run_overlay(enable_dbus=DBUS_AVAILABLE, demo=demo))
 
 
 if __name__ == "__main__":
