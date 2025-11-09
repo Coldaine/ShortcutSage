@@ -33,6 +33,10 @@ Status documents are created:
 |------|--------|----------|-------------|
 | 2025-11-08 | MVP Core Complete (PR-02 to PR-04) | 77.58% | Fixed test_dbus.py, documented current state |
 
+## Related Plans
+
+- [PR-05 Overlay Execution Checklist](../plans/PR-05-overlay-checklist.md) — actionable tasks & manual test steps for the next stacked PR.
+
 ---
 
 For the overall project plan, see [../plans/StagedImplementation.md](../plans/StagedImplementation.md).
