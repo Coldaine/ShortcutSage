@@ -17,7 +17,7 @@ Status updates follow the naming convention: `YYYY-MM-DD-project-status.md`
 
 ## Latest Status
 
-See [2025-11-08-project-status.md](./2025-11-08-project-status.md) for the most recent update.
+See [2025-11-11-status-progress.md](./2025-11-11-status-progress.md) for the most recent update.
 
 ## Update Frequency
 
@@ -31,6 +31,7 @@ Status documents are created:
 
 | Date | Status | Coverage | Key Changes |
 |------|--------|----------|-------------|
+| 2025-11-11 | PR-05 Code Complete, Ready for PR-06 | 58.76% (headless) | Fixed pytest-qt config, verified tests in headless env |
 | 2025-11-08 | MVP Core Complete (PR-02 to PR-04) | 77.58% | Fixed test_dbus.py, documented current state |
 
 ## Related Plans
