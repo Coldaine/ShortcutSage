@@ -94,7 +94,8 @@ addopts = [
     "--cov-report=term-missing",
     "--cov-report=html",
     "--cov-fail-under=75",  # 75% for local dev (Windows can't test DBus); CI on Linux achieves 80%+
-    "-v"
+    "-v",
+    "-p", "no:pytest-qt"  # Disable pytest-qt in headless environments
 ]
 
 [tool.coverage.run]
