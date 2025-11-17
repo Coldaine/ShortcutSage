@@ -3,13 +3,14 @@
 import logging
 from collections.abc import Callable
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
-from watchdog.observers import Observer
 
 if TYPE_CHECKING:
-    pass
+    from watchdog.observers import Observer
+else:
+    from watchdog.observers import Observer
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +28,7 @@ class ConfigWatcher:
         """
         self.config_dir = Path(config_dir)
         self.callback = callback
-        self.observer: Observer | None = None  # type: ignore[valid-type]
+        self.observer: Any = None  # Observer | None (watchdog type)
         self._handler = _ConfigHandler(self.config_dir, self.callback)
 
     def start(self) -> None:
