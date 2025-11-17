@@ -200,6 +200,8 @@ class OverlayWindow(QWidget):
         self.fade_animation.setEndValue(0.0)
         self.fade_animation.setEasingCurve(QEasingCurve.Type.InOutCubic)
         self.fade_animation.finished.connect(self.hide)
+
+
 DEMO_SUGGESTIONS = [
     {
         "action": "overview",
@@ -220,7 +222,7 @@ def run_overlay(*, enable_dbus: bool = True, demo: bool = False) -> int:
     """Launch the overlay UI."""
     app = QApplication.instance() or QApplication([sys.argv[0]])
     app.setApplicationName("ShortcutSageOverlay")
-    app.setQuitOnLastWindowClosed(False)
+    app.setQuitOnLastWindowClosed(False)  # type: ignore[attr-defined]
 
     overlay = OverlayWindow(dbus_available=enable_dbus)
     overlay.show()

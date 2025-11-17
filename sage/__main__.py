@@ -81,7 +81,9 @@ def main(argv: list[str] | None = None) -> None:
     elif args.command == "overlay":
         enable_dbus = DBUS_AVAILABLE and not args.no_dbus
         if not DBUS_AVAILABLE and not args.no_dbus:
-            print("DBus bindings not available; starting overlay in fallback mode.", file=sys.stderr)
+            print(
+                "DBus bindings not available; starting overlay in fallback mode.", file=sys.stderr
+            )
         exit_code = run_overlay(enable_dbus=enable_dbus, demo=args.demo)
         sys.exit(exit_code)
     else:

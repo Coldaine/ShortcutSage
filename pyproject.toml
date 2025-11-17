@@ -81,8 +81,14 @@ warn_unused_ignores = true
 warn_no_return = true
 
 [[tool.mypy.overrides]]
-module = ["dbus.*", "watchdog.*"]
+module = ["dbus.*", "watchdog.*", "PySide6.*", "yaml"]
 ignore_missing_imports = true
+
+# Allow Any for external UI and IPC modules
+[[tool.mypy.overrides]]
+module = ["sage.overlay", "sage.dev_hints", "sage.dbus_client", "sage.dbus_daemon", "sage.watcher"]
+disallow_any_generics = false
+warn_return_any = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

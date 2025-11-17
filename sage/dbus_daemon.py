@@ -26,7 +26,7 @@ try:
     import dbus
     import dbus.service
     from dbus.mainloop.glib import DBusGMainLoop, threads_init
-    from gi.repository import GLib  # type: ignore[import-not-found]
+    from gi.repository import GLib  # type: ignore[import-untyped]
 
     threads_init()
     DBUS_AVAILABLE = True
