@@ -4,8 +4,8 @@ on:
   # Manual trigger with options
   workflow_dispatch:
     inputs:
-      upload_screenshots:
-        description: 'Upload screenshots as artifacts'
+      run_claude_validation:
+        description: 'Run Claude vision validation'
         required: false
         default: true
         type: boolean
@@ -20,11 +20,12 @@ on:
     paths:
       - 'sage/overlay.py'
       - 'scripts/visual_test_overlay.py'
+      - 'scripts/validate_screenshots.py'
       - 'tests/**/test_overlay*.py'
 
 jobs:
   visual-test:
-    name: Overlay Visual Tests
+    name: Capture & Validate Screenshots
     runs-on: ubuntu-latest
 
     steps:
@@ -63,9 +64,10 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
+          pip install anthropic
 
-      - name: Run visual tests
-        id: visual_tests
+      - name: Run visual tests (capture screenshots)
+        id: capture
         run: |
           # Create screenshots directory
           mkdir -p screenshots
@@ -95,21 +97,106 @@ jobs:
               screenshots/montage.png || echo "Montage creation skipped"
           fi
 
+      - name: Validate screenshots with Claude
+        id: validate
+        if: ${{ (inputs.run_claude_validation == true || inputs.run_claude_validation == '') && env.HAS_API_KEY == 'true' }}
+        run: |
+          echo "Running Claude vision validation..."
+
+          # Run validation and capture exit code
+          set +e
+          python scripts/validate_screenshots.py screenshots/ \
+            --output screenshots/validation_report.json
+          VALIDATION_EXIT_CODE=$?
+          set -e
+
+          # Store result for later steps
+          if [ $VALIDATION_EXIT_CODE -eq 0 ]; then
+            echo "validation_passed=true" >> $GITHUB_OUTPUT
+            echo "✅ All visual validations passed!"
+          else
+            echo "validation_passed=false" >> $GITHUB_OUTPUT
+            echo "❌ Some visual validations failed"
+          fi
+
+          exit 0  # Don't fail here, we'll check in a later step
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          HAS_API_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+
+      - name: Skip validation notice
+        if: ${{ inputs.run_claude_validation == false || env.HAS_API_KEY != 'true' }}
+        env:
+          HAS_API_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+        run: |
+          echo "⚠️ Claude validation skipped"
+          if [ "$HAS_API_KEY" != "true" ]; then
+            echo "   Reason: ANTHROPIC_API_KEY secret not configured"
+            echo ""
+            echo "   To enable automated visual validation:"
+            echo "   1. Go to Settings → Secrets and variables → Actions"
+            echo "   2. Click 'New repository secret'"
+            echo "   3. Name: ANTHROPIC_API_KEY"
+            echo "   4. Value: Your Anthropic API key"
+          else
+            echo "   Reason: Validation disabled via workflow input"
+          fi
+
       - name: Upload screenshots
-        if: ${{ inputs.upload_screenshots != 'false' }}
         uses: actions/upload-artifact@v4
         with:
           name: overlay-screenshots-${{ github.sha }}
           path: screenshots/
           retention-days: 30
 
-      - name: Visual test summary
+      - name: Generate summary
         run: |
-          echo "## Visual Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "## 🖼️ Visual Test Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Screenshots captured:** ${{ steps.visual_tests.outputs.screenshot_count }}" >> $GITHUB_STEP_SUMMARY
+
+          # Screenshot capture results
+          echo "### 📸 Screenshot Capture" >> $GITHUB_STEP_SUMMARY
+          echo "**Screenshots captured:** ${{ steps.capture.outputs.screenshot_count }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Test Scenarios" >> $GITHUB_STEP_SUMMARY
+
+          # Validation results
+          echo "### 🤖 Claude Vision Validation" >> $GITHUB_STEP_SUMMARY
+          if [ -f screenshots/validation_report.json ]; then
+            # Parse and display results nicely
+            PASSED=$(cat screenshots/validation_report.json | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['summary']['passed'])")
+            FAILED=$(cat screenshots/validation_report.json | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['summary']['failed'])")
+            RATE=$(cat screenshots/validation_report.json | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['summary']['pass_rate'])")
+
+            if [ "$FAILED" = "0" ]; then
+              echo "✅ **All validations passed!**" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "❌ **Some validations failed**" >> $GITHUB_STEP_SUMMARY
+            fi
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+            echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+            echo "| Passed | $PASSED |" >> $GITHUB_STEP_SUMMARY
+            echo "| Failed | $FAILED |" >> $GITHUB_STEP_SUMMARY
+            echo "| Pass Rate | $RATE |" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            echo "<details><summary>Full Validation Report</summary>" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+            cat screenshots/validation_report.json >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "</details>" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Validation was skipped (ANTHROPIC_API_KEY not configured)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "To enable:" >> $GITHUB_STEP_SUMMARY
+            echo "1. Go to **Settings → Secrets → Actions**" >> $GITHUB_STEP_SUMMARY
+            echo "2. Add secret: \`ANTHROPIC_API_KEY\`" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Test scenarios table
+          echo "### 📋 Test Scenarios" >> $GITHUB_STEP_SUMMARY
           echo "| Test | Description |" >> $GITHUB_STEP_SUMMARY
           echo "|------|-------------|" >> $GITHUB_STEP_SUMMARY
           echo "| 01_empty | Empty overlay (no suggestions) |" >> $GITHUB_STEP_SUMMARY
@@ -118,9 +205,16 @@ jobs:
           echo "| 04_max_three | Maximum 3 suggestions |" >> $GITHUB_STEP_SUMMARY
           echo "| 05_cleared | Suggestions cleared |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Download the **overlay-screenshots** artifact to review." >> $GITHUB_STEP_SUMMARY
+          echo "📦 Download the **overlay-screenshots** artifact to review images manually." >> $GITHUB_STEP_SUMMARY
 
-  # Optional: Run standard overlay unit tests alongside
+      - name: Check validation result
+        if: ${{ steps.validate.outputs.validation_passed == 'false' }}
+        run: |
+          echo "❌ Claude validation found issues with the screenshots"
+          echo "Check the validation report in the artifacts for details"
+          exit 1
+
+  # Run standard overlay unit tests
   overlay-unit-tests:
     name: Overlay Unit Tests
     runs-on: ubuntu-latest
