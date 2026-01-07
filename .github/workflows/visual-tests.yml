@@ -1,0 +1,165 @@
+name: Visual Tests
+
+on:
+  # Manual trigger with options
+  workflow_dispatch:
+    inputs:
+      upload_screenshots:
+        description: 'Upload screenshots as artifacts'
+        required: false
+        default: true
+        type: boolean
+      python_version:
+        description: 'Python version'
+        required: false
+        default: '3.11'
+        type: string
+
+  # Also run on PRs that touch overlay code
+  pull_request:
+    paths:
+      - 'sage/overlay.py'
+      - 'scripts/visual_test_overlay.py'
+      - 'tests/**/test_overlay*.py'
+
+jobs:
+  visual-test:
+    name: Overlay Visual Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ inputs.python_version || '3.11' }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python_version || '3.11' }}
+          cache: 'pip'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libxcb-cursor0 \
+            libxcb-icccm4 \
+            libxcb-image0 \
+            libxcb-keysyms1 \
+            libxcb-randr0 \
+            libxcb-render-util0 \
+            libxcb-shape0 \
+            libxcb-xinerama0 \
+            libxcb-xfixes0 \
+            libxkbcommon-x11-0 \
+            x11-utils \
+            xvfb \
+            libegl1 \
+            libgl1 \
+            libglib2.0-0 \
+            scrot \
+            imagemagick
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run visual tests
+        id: visual_tests
+        run: |
+          # Create screenshots directory
+          mkdir -p screenshots
+
+          # Run visual test script under xvfb
+          xvfb-run -a --server-args="-screen 0 1920x1080x24" \
+            python scripts/visual_test_overlay.py
+
+          # List captured screenshots
+          echo "Captured screenshots:"
+          ls -la screenshots/
+
+          # Count screenshots for summary
+          SCREENSHOT_COUNT=$(ls -1 screenshots/*.png 2>/dev/null | wc -l)
+          echo "screenshot_count=$SCREENSHOT_COUNT" >> $GITHUB_OUTPUT
+        env:
+          QT_QPA_PLATFORM: offscreen
+          DISPLAY: ':99'
+
+      - name: Generate screenshot montage
+        if: success()
+        run: |
+          # Create a montage of all screenshots for easy review
+          if ls screenshots/*.png 1> /dev/null 2>&1; then
+            montage screenshots/*.png -tile 2x3 -geometry +5+5 \
+              -background '#1a1a1a' -title 'Overlay Visual Tests' \
+              screenshots/montage.png || echo "Montage creation skipped"
+          fi
+
+      - name: Upload screenshots
+        if: ${{ inputs.upload_screenshots != 'false' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: overlay-screenshots-${{ github.sha }}
+          path: screenshots/
+          retention-days: 30
+
+      - name: Visual test summary
+        run: |
+          echo "## Visual Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Screenshots captured:** ${{ steps.visual_tests.outputs.screenshot_count }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Test Scenarios" >> $GITHUB_STEP_SUMMARY
+          echo "| Test | Description |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|-------------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 01_empty | Empty overlay (no suggestions) |" >> $GITHUB_STEP_SUMMARY
+          echo "| 02_suggestions | Demo suggestions displayed |" >> $GITHUB_STEP_SUMMARY
+          echo "| 03_single | Single suggestion chip |" >> $GITHUB_STEP_SUMMARY
+          echo "| 04_max_three | Maximum 3 suggestions |" >> $GITHUB_STEP_SUMMARY
+          echo "| 05_cleared | Suggestions cleared |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Download the **overlay-screenshots** artifact to review." >> $GITHUB_STEP_SUMMARY
+
+  # Optional: Run standard overlay unit tests alongside
+  overlay-unit-tests:
+    name: Overlay Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libxcb-cursor0 \
+            libxcb-icccm4 \
+            libxcb-image0 \
+            libxcb-keysyms1 \
+            libxcb-randr0 \
+            libxcb-render-util0 \
+            libxcb-shape0 \
+            libxcb-xinerama0 \
+            libxcb-xfixes0 \
+            libxkbcommon-x11-0 \
+            xvfb \
+            libegl1 \
+            libgl1
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run overlay tests
+        run: |
+          xvfb-run -a pytest tests/unit/test_overlay.py tests/e2e/test_overlay_signal.py -v --no-cov
+        env:
+          QT_QPA_PLATFORM: offscreen
