@@ -23,6 +23,7 @@ import argparse
 import base64
 import json
 import sys
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -71,8 +72,8 @@ VALIDATION_CRITERIA: dict[str, dict[str, str | list[str]]] = {
         ],
     },
     "04_max_three": {
-        "name": "Maximum Suggestions",
-        "description": "Overlay showing maximum of 3 suggestions",
+        "name": "Maximum Suggestions (Truncation Test)",
+        "description": "Overlay showing maximum of 3 suggestions (4 were provided, verifying truncation)",
         "must_have": [
             "Exactly three suggestion chips visible",
             "Text 'Meta+Tab' visible",
@@ -82,7 +83,8 @@ VALIDATION_CRITERIA: dict[str, dict[str, str | list[str]]] = {
         ],
         "must_not_have": [
             "More than 3 chips",
-            "Fourth suggestion visible",
+            "Fourth suggestion visible (Meta+Down)",
+            "Text 'Minimize' visible",
         ],
     },
     "05_cleared": {
@@ -105,12 +107,14 @@ VALIDATION_CRITERIA: dict[str, dict[str, str | list[str]]] = {
 class ValidationResult:
     """Result of validating a single screenshot."""
 
+    test_id: str
     test_name: str
     passed: bool
     reasoning: str
     criteria_met: list[str]
     criteria_failed: list[str]
     confidence: str  # "high", "medium", "low"
+    error: str | None = None
 
 
 def encode_image_to_base64(image_path: Path) -> str:
@@ -138,6 +142,8 @@ def build_validation_prompt(criteria: dict[str, str | list[str]]) -> str:
     must_not_have = criteria.get("must_not_have", [])
 
     prompt = f"""You are validating a screenshot of the Shortcut Sage overlay UI.
+
+**Context**: Shortcut Sage is a KDE Plasma desktop tool that suggests keyboard shortcuts based on user actions. The overlay displays suggestion "chips" - small UI elements showing a keyboard shortcut and description.
 
 **Test Scenario**: {criteria['name']}
 **Expected State**: {criteria['description']}
@@ -174,58 +180,118 @@ def validate_screenshot_with_claude(
     image_path: Path,
     test_id: str,
     api_key: str,
+    max_retries: int = 3,
 ) -> ValidationResult:
-    """Send a screenshot to Claude for validation."""
+    """Send a screenshot to Claude for validation with error handling."""
     import anthropic
 
     if test_id not in VALIDATION_CRITERIA:
         return ValidationResult(
+            test_id=test_id,
             test_name=test_id,
             passed=False,
             reasoning=f"Unknown test ID: {test_id}",
             criteria_met=[],
             criteria_failed=["Unknown test scenario"],
             confidence="high",
+            error=f"Unknown test ID: {test_id}",
         )
 
     criteria = VALIDATION_CRITERIA[test_id]
-    prompt = build_validation_prompt(criteria)
 
     # Encode image
-    image_data = encode_image_to_base64(image_path)
-    media_type = get_image_media_type(image_path)
+    try:
+        image_data = encode_image_to_base64(image_path)
+        media_type = get_image_media_type(image_path)
+    except Exception as e:
+        return ValidationResult(
+            test_id=test_id,
+            test_name=criteria["name"],
+            passed=False,
+            reasoning=f"Failed to read image: {e}",
+            criteria_met=[],
+            criteria_failed=["Image read error"],
+            confidence="high",
+            error=str(e),
+        )
 
-    # Call Claude API
+    prompt = build_validation_prompt(criteria)
+
+    # Call Claude API with retries
     client = anthropic.Anthropic(api_key=api_key)
+    last_error = None
 
-    message = client.messages.create(
-        model="claude-sonnet-4-20250514",
-        max_tokens=1024,
-        messages=[
-            {
-                "role": "user",
-                "content": [
+    for attempt in range(max_retries):
+        try:
+            message = client.messages.create(
+                model="claude-sonnet-4-20250514",
+                max_tokens=1024,
+                messages=[
                     {
-                        "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": media_type,
-                            "data": image_data,
-                        },
-                    },
-                    {
-                        "type": "text",
-                        "text": prompt,
-                    },
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "image",
+                                "source": {
+                                    "type": "base64",
+                                    "media_type": media_type,
+                                    "data": image_data,
+                                },
+                            },
+                            {
+                                "type": "text",
+                                "text": prompt,
+                            },
+                        ],
+                    }
                 ],
-            }
-        ],
+            )
+
+            # Extract text from all content blocks
+            response_text = ""
+            for block in message.content:
+                if hasattr(block, "text"):
+                    response_text += block.text
+
+            # Parse response
+            return parse_claude_response(response_text, test_id, criteria)
+
+        except anthropic.APIConnectionError as e:
+            last_error = f"Connection error: {e}"
+            if attempt < max_retries - 1:
+                time.sleep(2 ** attempt)  # Exponential backoff
+                continue
+        except anthropic.RateLimitError as e:
+            last_error = f"Rate limit error: {e}"
+            if attempt < max_retries - 1:
+                time.sleep(5 * (attempt + 1))  # Longer wait for rate limits
+                continue
+        except anthropic.APIStatusError as e:
+            last_error = f"API error: {e.status_code} - {e.message}"
+            break  # Don't retry on API errors
+        except Exception as e:
+            last_error = f"Unexpected error: {e}"
+            break
+
+    # All retries failed
+    return ValidationResult(
+        test_id=test_id,
+        test_name=criteria["name"],
+        passed=False,
+        reasoning=f"API call failed after {max_retries} attempts: {last_error}",
+        criteria_met=[],
+        criteria_failed=["API error"],
+        confidence="low",
+        error=last_error,
     )
 
-    # Parse response
-    response_text = message.content[0].text
 
-    # Extract JSON from response
+def parse_claude_response(
+    response_text: str,
+    test_id: str,
+    criteria: dict[str, str | list[str]],
+) -> ValidationResult:
+    """Parse Claude's response into a ValidationResult."""
     try:
         # Find JSON in response
         json_start = response_text.find("{")
@@ -237,6 +303,7 @@ def validate_screenshot_with_claude(
             raise ValueError("No JSON found in response")
 
         return ValidationResult(
+            test_id=test_id,
             test_name=criteria["name"],
             passed=result_data.get("passed", False),
             reasoning=result_data.get("reasoning", "No reasoning provided"),
@@ -247,24 +314,30 @@ def validate_screenshot_with_claude(
 
     except (json.JSONDecodeError, ValueError) as e:
         return ValidationResult(
+            test_id=test_id,
             test_name=criteria["name"],
             passed=False,
-            reasoning=f"Failed to parse Claude's response: {e}\nRaw: {response_text[:500]}",
+            reasoning=f"Failed to parse response: {e}\nRaw: {response_text[:500]}",
             criteria_met=[],
             criteria_failed=["Response parsing error"],
             confidence="low",
+            error=str(e),
         )
 
 
 def find_screenshots(screenshots_dir: Path) -> dict[str, Path]:
-    """Find and categorize screenshots by test ID."""
+    """Find and categorize screenshots by test ID.
+
+    Selects the most recent screenshot for each test ID if duplicates exist.
+    """
     screenshots: dict[str, Path] = {}
 
-    for png_file in screenshots_dir.glob("*.png"):
+    for png_file in sorted(screenshots_dir.glob("overlay_test_*.png"), reverse=True):
         # Extract test ID from filename like "overlay_test_01_empty_20250107_123456.png"
         name = png_file.stem
         for test_id in VALIDATION_CRITERIA:
-            if test_id in name:
+            if test_id in name and test_id not in screenshots:
+                # Only take the first (most recent due to reverse sort)
                 screenshots[test_id] = png_file
                 break
 
@@ -279,6 +352,9 @@ def print_result(result: ValidationResult) -> None:
     print(f"{'='*60}")
     print(f"Reasoning: {result.reasoning}")
 
+    if result.error:
+        print(f"\n⚠️ Error: {result.error}")
+
     if result.criteria_met:
         print(f"\n✓ Criteria met:")
         for c in result.criteria_met:
@@ -292,21 +368,26 @@ def print_result(result: ValidationResult) -> None:
 
 def generate_report(results: list[ValidationResult], output_path: Path | None) -> dict:
     """Generate a JSON report of all validation results."""
+    errors = [r for r in results if r.error]
+
     report = {
         "summary": {
             "total": len(results),
             "passed": sum(1 for r in results if r.passed),
             "failed": sum(1 for r in results if not r.passed),
+            "errors": len(errors),
             "pass_rate": f"{sum(1 for r in results if r.passed) / len(results) * 100:.1f}%" if results else "0%",
         },
         "results": [
             {
+                "test_id": r.test_id,
                 "test_name": r.test_name,
                 "passed": r.passed,
                 "confidence": r.confidence,
                 "reasoning": r.reasoning,
                 "criteria_met": r.criteria_met,
                 "criteria_failed": r.criteria_failed,
+                "error": r.error,
             }
             for r in results
         ],
@@ -375,6 +456,11 @@ def main() -> int:
     for test_id, path in sorted(screenshots.items()):
         print(f"  - {test_id}: {path.name}")
 
+    # Check for missing test scenarios
+    missing = set(VALIDATION_CRITERIA.keys()) - set(screenshots.keys())
+    if missing:
+        print(f"\n⚠️ Missing screenshots for: {', '.join(sorted(missing))}")
+
     # Validate each screenshot
     results: list[ValidationResult] = []
     for test_id, screenshot_path in sorted(screenshots.items()):
@@ -393,12 +479,16 @@ def main() -> int:
     print(f"Total:  {report['summary']['total']}")
     print(f"Passed: {report['summary']['passed']}")
     print(f"Failed: {report['summary']['failed']}")
+    print(f"Errors: {report['summary']['errors']}")
     print(f"Rate:   {report['summary']['pass_rate']}")
 
     # Return exit code
     if report["summary"]["failed"] > 0:
         print("\n❌ Some validations failed!")
         return 1
+    elif report["summary"]["errors"] > 0:
+        print("\n⚠️ Some validations had errors!")
+        return 2
     else:
         print("\n✅ All validations passed!")
         return 0
