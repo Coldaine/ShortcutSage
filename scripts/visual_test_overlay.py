@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Visual test harness for overlay screenshot validation.
 
-Run this on a graphical KDE Plasma environment (e.g., Nobara desktop).
+Run this on a graphical environment (KDE Plasma, xvfb, etc.).
 It launches the overlay in demo mode, takes screenshots, and saves them
 for visual review.
 
@@ -14,7 +14,7 @@ Output:
 Requirements:
     - PySide6 (pip install PySide6)
     - scrot or spectacle for screenshots (usually pre-installed on KDE)
-    - Running KDE Plasma session
+    - Running graphical session (X11/Wayland or xvfb)
 """
 
 from __future__ import annotations
@@ -29,6 +29,15 @@ from pathlib import Path
 # Add project root to path
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
+
+# Required test IDs - all must succeed for the test to pass
+REQUIRED_TESTS = [
+    "01_empty",
+    "02_suggestions",
+    "03_single",
+    "04_max_three",
+    "05_cleared",
+]
 
 
 def ensure_screenshot_dir() -> Path:
@@ -45,10 +54,10 @@ def take_screenshot(name: str, screenshots_dir: Path) -> Path | None:
 
     # Try different screenshot tools
     tools = [
-        ["spectacle", "-b", "-n", "-o", str(filename)],  # KDE
-        ["scrot", "-o", str(filename)],                   # Generic X11
-        ["gnome-screenshot", "-f", str(filename)],        # GNOME
+        ["scrot", "-o", str(filename)],                   # Generic X11 (works with xvfb)
         ["import", "-window", "root", str(filename)],     # ImageMagick
+        ["spectacle", "-b", "-n", "-o", str(filename)],   # KDE
+        ["gnome-screenshot", "-f", str(filename)],        # GNOME
     ]
 
     for tool_cmd in tools:
@@ -64,7 +73,7 @@ def take_screenshot(name: str, screenshots_dir: Path) -> Path | None:
         except (subprocess.TimeoutExpired, FileNotFoundError):
             continue
 
-    print(f"  ✗ Failed to take screenshot (tried spectacle, scrot, gnome-screenshot, import)")
+    print(f"  ✗ Failed to take screenshot (tried scrot, import, spectacle, gnome-screenshot)")
     return None
 
 
@@ -103,12 +112,13 @@ def run_visual_tests() -> dict[str, Path | None]:
         time.sleep(0.5)
         results["01_empty"] = take_screenshot("01_empty", screenshots_dir)
 
-        # Test 2: With demo suggestions
-        print("\n3. Test: Overlay with demo suggestions")
+        # Test 2: With demo suggestions (2 chips)
+        print("\n3. Test: Overlay with demo suggestions (2 chips)")
         overlay.set_suggestions_fallback(DEMO_SUGGESTIONS)
         app.processEvents()
         time.sleep(0.5)
-        results["02_with_suggestions"] = take_screenshot("02_suggestions", screenshots_dir)
+        # Key fix: use consistent naming "02_suggestions" for both dict key and filename
+        results["02_suggestions"] = take_screenshot("02_suggestions", screenshots_dir)
 
         # Test 3: Single suggestion
         print("\n4. Test: Single suggestion")
@@ -117,17 +127,24 @@ def run_visual_tests() -> dict[str, Path | None]:
         time.sleep(0.5)
         results["03_single"] = take_screenshot("03_single", screenshots_dir)
 
-        # Test 4: Three suggestions (max)
-        print("\n5. Test: Maximum suggestions (3)")
-        three_suggestions = DEMO_SUGGESTIONS + [
+        # Test 4: Four suggestions - tests truncation to max 3
+        print("\n5. Test: Maximum suggestions (4 input → 3 displayed)")
+        four_suggestions = DEMO_SUGGESTIONS + [
             {
                 "action": "tile_right",
                 "key": "Meta+Right",
                 "description": "Tile window to right half",
                 "priority": 50,
-            }
+            },
+            {
+                "action": "minimize",
+                "key": "Meta+Down",
+                "description": "Minimize window",
+                "priority": 40,
+            },
         ]
-        overlay.set_suggestions_fallback(three_suggestions)
+        # This tests that only 3 chips are shown even with 4 suggestions
+        overlay.set_suggestions_fallback(four_suggestions)
         app.processEvents()
         time.sleep(0.5)
         results["04_max_three"] = take_screenshot("04_max_three", screenshots_dir)
@@ -153,7 +170,7 @@ def run_visual_tests() -> dict[str, Path | None]:
         print(f"\nScreenshot directory: {screenshots_dir}")
         print("\nNext steps:")
         print("1. Review the screenshots visually")
-        print("2. Share them for AI-assisted validation")
+        print("2. Run validate_screenshots.py for automated validation")
         print("3. Delete screenshots/ when done")
 
         app.quit()
@@ -172,7 +189,7 @@ def check_environment() -> bool:
     display = os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")
     if not display:
         print("ERROR: No display available (DISPLAY or WAYLAND_DISPLAY not set)")
-        print("This script must be run in a graphical session.")
+        print("This script must be run in a graphical session or under xvfb.")
         return False
 
     print(f"Display: {display}")
@@ -189,13 +206,21 @@ def main() -> int:
     try:
         results = run_visual_tests()
 
-        # Return success if at least some screenshots were taken
+        # Count successes
         successful = sum(1 for r in results.values() if r is not None)
-        if successful > 0:
-            print(f"\n✓ {successful}/{len(results)} screenshots captured successfully")
+        total = len(REQUIRED_TESTS)
+
+        print(f"\n{'='*60}")
+        print(f"RESULT: {successful}/{total} screenshots captured")
+        print(f"{'='*60}")
+
+        # Require ALL screenshots for success
+        if successful == total:
+            print("✓ All screenshots captured successfully")
             return 0
         else:
-            print("\n✗ No screenshots were captured")
+            missing = [k for k in REQUIRED_TESTS if results.get(k) is None]
+            print(f"✗ Missing screenshots: {', '.join(missing)}")
             return 1
 
     except ImportError as e:
@@ -204,6 +229,8 @@ def main() -> int:
         return 1
     except Exception as e:
         print(f"ERROR: {e}")
+        import traceback
+        traceback.print_exc()
         return 1
 
 
