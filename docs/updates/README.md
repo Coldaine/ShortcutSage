@@ -31,6 +31,7 @@ Status documents are created:
 
 | Date | Status | Coverage | Key Changes |
 |------|--------|----------|-------------|
+| 2026-01-07 | Automated Visual Testing (PR #8) | 58-77% | Added Claude vision validation, GitHub Actions workflow, justfile, hooks docs |
 | 2025-11-11 | PR-05 Code Complete, Ready for PR-06 | 58.76% (headless) | Fixed pytest-qt config, verified tests in headless env |
 | 2025-11-08 | MVP Core Complete (PR-02 to PR-04) | 77.58% | Fixed test_dbus.py, documented current state |
 
