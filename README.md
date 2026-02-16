@@ -3,6 +3,7 @@
 > Context-aware keyboard shortcut suggestions for KDE Plasma (Wayland)
 
 [![CI](https://github.com/Coldaine/ShortcutSage/actions/workflows/ci.yml/badge.svg)](https://github.com/Coldaine/ShortcutSage/actions/workflows/ci.yml)
+[![Visual Tests](https://github.com/Coldaine/ShortcutSage/actions/workflows/visual-tests.yml/badge.svg)](https://github.com/Coldaine/ShortcutSage/actions/workflows/visual-tests.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 
@@ -107,9 +108,48 @@ shortcut-sage overlay --demo
 - Listens for DBus `Suggestions` signals from the daemon; `--demo` fills placeholder data without DBus
 - Honors `Qt.WindowDoesNotAcceptFocus` so it never steals focus while you work
 
+## Automated Visual Testing
+
+The overlay UI is validated using automated screenshot testing with Claude vision:
+
+- **GitHub Actions**: Captures screenshots under xvfb in CI
+- **Claude Vision**: Validates screenshots against specific criteria
+- **5 test scenarios**: Empty, 2 suggestions, single, max 3 (truncation), cleared
+- **Artifacts**: Screenshots available for manual review
+
+See [docs/plans/visual-test-checklist.md](docs/plans/visual-test-checklist.md) for details.
+
 ## Development
 
-### Running Tests
+### Quick Commands (using justfile)
+
+```bash
+# Setup environment
+just setup
+
+# Run all tests
+just test
+
+# Run tests without Qt/DBus (headless CI compatible)
+just test-headless
+
+# Run visual tests (requires graphical environment)
+just test-visual
+
+# Lint and format
+just lint
+just format
+
+# Simulate CI locally
+just ci
+
+# Run daemon/overlay
+just daemon
+just overlay
+just demo
+```
+
+### Running Tests Manually
 
 ```bash
 # All tests with coverage
@@ -123,6 +163,13 @@ pytest tests/integration
 
 # End-to-end tests (requires KDE)
 pytest tests/e2e
+
+# Visual tests (captures screenshots)
+python scripts/visual_test_overlay.py
+
+# Validate screenshots with Claude
+export ANTHROPIC_API_KEY='your-key'
+python scripts/validate_screenshots.py screenshots/
 ```
 
 ### Code Quality

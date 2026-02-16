@@ -10,7 +10,9 @@ Finalize the Overlay UI MVP so PR-05 can be opened immediately after PR-04. This
 - ✅ PySide6 overlay window (`sage/overlay.py`) – frameless, top-left, max 3 chips
 - ✅ CLI entry points (`shortcut-sage daemon|overlay`) with argparse and help text
 - ✅ Unit coverage (`tests/unit/test_overlay.py`)
-- ⏳ Manual testing evidence (screenshots/checklist)
+- ✅ **Automated visual testing** (`scripts/visual_test_overlay.py`)
+- ✅ **Claude vision validation** (`scripts/validate_screenshots.py`)
+- ✅ **GitHub Actions workflow** (`.github/workflows/visual-tests.yml`)
 - ✅ README/docs updates describing overlay behavior & test plan
 - ✅ E2E signal smoke (DBus Suggestions → overlay paint) – lightweight harness acceptable
 
@@ -21,10 +23,14 @@ Finalize the Overlay UI MVP so PR-05 can be opened immediately after PR-04. This
 | Overlay code sanity pass | Re-read `sage/overlay.py`, confirm logging, fallback path | ✅ Done 2025-11-08 |
 | CLI plumbing | Extend `sage/__main__.py` (argparse) + expose overlay entry point | ✅ Done 2025-11-08 |
 | CLI docs | Expand README usage + overlay section | ✅ Done 2025-11-08 |
-| Manual test checklist | Define reproducible steps + expected results | ⏳ (documented below; needs execution evidence) |
-| Screenshot / artifact | Capture overlay rendering on KDE | ⏳ |
+| Manual test checklist | Define reproducible steps + expected results | ✅ Done (see below + visual-test-checklist.md) |
+| Screenshot / artifact | Capture overlay rendering on KDE | ✅ Automated in CI via visual tests |
 | E2E signal test | Add `tests/e2e/test_overlay_signal.py` to verify DBus listener → UI | ✅ Done 2025-11-08 |
-| PR narrative | Prep `PR-05` template, include Known Issues & security note | ⏳ |
+| **Visual test harness** | Create automated screenshot capture script | ✅ Done 2026-01-07 |
+| **Claude validation** | Implement AI-powered screenshot validation | ✅ Done 2026-01-07 |
+| **CI integration** | Add visual tests workflow to GitHub Actions | ✅ Done 2026-01-07 |
+| **Dev tooling** | Create justfile for common commands | ✅ Done 2026-01-07 |
+| PR narrative | Prep `PR-05` template, include Known Issues & security note | ✅ Completed as PR #8 |
 
 ## Manual Testing Checklist (to execute on KDE Plasma 5.27+)
 
@@ -38,6 +44,40 @@ Finalize the Overlay UI MVP so PR-05 can be opened immediately after PR-04. This
 | 6 | Move focus between windows rapidly | Overlay remains always-on-top and does not steal focus |
 
 Record run logs + screenshot; attach to PR as artifacts.
+
+## Automated Visual Testing (Added 2026-01-07)
+
+The overlay UI is now validated automatically via screenshot testing:
+
+**Test Harness** (`scripts/visual_test_overlay.py`):
+- Captures 5 test scenarios: empty, 2 suggestions, single, max 3 (truncation), cleared
+- Runs under xvfb in CI (no graphical environment needed)
+- Uses scrot/imagemagick for screenshot capture
+- Requires all 5 screenshots for success
+
+**Claude Validation** (`scripts/validate_screenshots.py`):
+- Sends screenshots to Claude API with vision capability
+- Validates against specific criteria (chip count, text content, layout)
+- Generates JSON report with pass/fail + reasoning
+- Handles API errors with retries and exponential backoff
+
+**GitHub Actions** (`.github/workflows/visual-tests.yml`):
+- Runs automatically on overlay code changes
+- Manual trigger available in Actions tab
+- Uploads screenshots as artifacts for manual review
+- Requires `ANTHROPIC_API_KEY` secret for validation (optional)
+
+**Usage**:
+```bash
+# Local testing
+just test-visual  # Captures screenshots
+just validate-screenshots  # Validates with Claude
+
+# CI testing
+# Push changes or go to Actions → Visual Tests → Run workflow
+```
+
+See [visual-test-checklist.md](visual-test-checklist.md) for detailed setup and troubleshooting.
 
 ## Execution Steps
 1. Branching:

@@ -52,7 +52,7 @@ Each screenshot is validated against specific criteria:
 | **01_empty** | Empty/minimal window | Any shortcut text or chips |
 | **02_suggestions** | "Meta+Tab", "Meta+Left", 2 chips | More than 3 chips |
 | **03_single** | Exactly 1 chip, "Meta+Tab" | Multiple chips |
-| **04_max_three** | Exactly 3 chips | More than 3 chips |
+| **04_max_three** | Exactly 3 chips (from 4 input - truncation test) | More than 3 chips, "Meta+Down" |
 | **05_cleared** | Empty window | Any chips or shortcuts |
 
 ## Manual Testing (Alternative)
@@ -83,7 +83,7 @@ python scripts/validate_screenshots.py screenshots/
 | `overlay_test_01_empty_*.png` | Empty overlay | Small transparent window, no chips |
 | `overlay_test_02_suggestions_*.png` | Demo suggestions | 2 chips: "Meta+Tab" and "Meta+Left" |
 | `overlay_test_03_single_*.png` | Single suggestion | 1 chip: "Meta+Tab" only |
-| `overlay_test_04_max_three_*.png` | Max suggestions | 3 chips displayed |
+| `overlay_test_04_max_three_*.png` | Max suggestions (truncation) | 3 chips displayed (4 provided, 4th truncated) |
 | `overlay_test_05_cleared_*.png` | Cleared state | Empty, chips removed |
 
 ## Visual Validation Criteria
@@ -110,7 +110,8 @@ python scripts/validate_screenshots.py screenshots/
 
 ### GitHub Actions fails to capture screenshots
 - Check that `xvfb-run` is installed (should be automatic)
-- Verify `QT_QPA_PLATFORM=offscreen` is set
+- Verify `QT_QPA_PLATFORM=xcb` is set (uses X11 for screenshot capture)
+- Ensure scrot or imagemagick is installed for screenshot tools
 - Review the "Run visual tests" step logs
 
 ### Claude validation fails unexpectedly
